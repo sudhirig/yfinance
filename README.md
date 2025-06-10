@@ -41,6 +41,33 @@
 - `download`: download market data for multiple tickers
 - `Market`: get information about a market
 - `WebSocket` and `AsyncWebSocket`: live streaming data
+
+---
+
+## Example: Fetching Indian Stock Data (NSE & BSE)
+
+yfinance supports fetching data for Indian stocks listed on NSE and BSE:
+
+```python
+import yfinance as yf
+
+# NSE Example: Reliance Industries
+nse_ticker = yf.Ticker("RELIANCE.NS")
+nse_data = nse_ticker.history(period="1mo")
+print("NSE - Reliance Industries (RELIANCE.NS) last 1 month:")
+print(nse_data)
+
+# BSE Example: Reliance Industries (BSE code: 500325)
+bse_ticker = yf.Ticker("500325.BO")
+bse_data = bse_ticker.history(period="1mo")
+print("BSE - Reliance Industries (500325.BO) last 1 month:")
+print(bse_data)
+```
+
+- For NSE, use the ticker symbol followed by `.NS` (e.g., `RELIANCE.NS`).
+- For BSE, use the numeric code followed by `.BO` (e.g., `500325.BO`).
+
+> Note: Data availability may vary and is subject to Yahoo Finance's data sources.
 - `Search`: quotes and news from search
 - `Sector` and `Industry`: sector and industry information
 - `EquityQuery` and `Screener`: build query to screen market
