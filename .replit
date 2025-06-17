@@ -3,3 +3,15 @@ modules = ["python-3.12"]
 [nix]
 channel = "stable-24_05"
 packages = ["glibcLocales", "libxcrypt", "pkg-config", "sqlite", "xsimd"]
+
+[workflows]
+runButton = "Setup Database"
+
+[[workflows.workflow]]
+name = "Setup Database"
+author = 38404436
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main_data_loader.py"
