@@ -735,11 +735,13 @@ class YFinanceNSEDownloader:
             if os.path.exists(symbols_file):
                 with open(symbols_file, 'r') as f:
                     symbols = [line.strip() for line in f.readlines() if line.strip()]
+                self.logger.info(f"Loaded {len(symbols)} symbols from existing file")
             else:
-                self.logger.info("Getting NSE symbols...")
+                self.logger.info("Getting ALL NSE symbols (complete universe)...")
                 fetcher = NSESymbolsFetcher()
-                symbols = fetcher.get_all_nse_symbols()
+                symbols = fetcher.get_all_nse_symbols(complete_universe=True)
                 fetcher.save_symbols_to_file(symbols, symbols_file)
+                self.logger.info(f"Generated new symbols file with {len(symbols)} NSE stocks")
             
             self.logger.info(f"Starting download for {len(symbols)} NSE stocks")
             

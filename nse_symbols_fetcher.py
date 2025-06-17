@@ -64,6 +64,49 @@ class NSESymbolsFetcher:
         
         return []
     
+    def get_all_nse_stocks_complete(self) -> List[str]:
+        """
+        Get complete list of ALL NSE stocks (4000+) from multiple sources
+        """
+        all_symbols = set()
+        
+        # Method 1: NSE official equity list
+        try:
+            equity_url = "https://www1.nseindia.com/content/equities/EQUITY_L.csv"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'text/csv,application/csv',
+            }
+            
+            import requests
+            session = requests.Session()
+            session.headers.update(headers)
+            
+            # Get NSE main page first
+            session.get("https://www.nseindia.com", timeout=10)
+            time.sleep(2)
+            
+            response = session.get(equity_url, timeout=15)
+            if response.status_code == 200:
+                lines = response.text.strip().split('\n')
+                for line in lines[1:]:  # Skip header
+                    parts = line.split(',')
+                    if len(parts) >= 1:
+                        symbol = parts[0].strip().strip('"')
+                        if symbol and symbol != 'SYMBOL':
+                            all_symbols.add(f"{symbol}.NS")
+                
+                self.logger.info(f"Fetched {len(all_symbols)} symbols from NSE equity list")
+            
+        except Exception as e:
+            self.logger.warning(f"Could not fetch from NSE equity list: {e}")
+        
+        # Method 2: Add symbols from comprehensive list as backup
+        comprehensive_symbols = self.get_comprehensive_nse_stocks()
+        all_symbols.update(comprehensive_symbols)
+        
+        return sorted(list(all_symbols))
+
     def get_comprehensive_nse_stocks(self) -> List[str]:
         """
         Get comprehensive list of 1000+ NSE stocks across all sectors and market caps
@@ -253,15 +296,21 @@ class NSESymbolsFetcher:
         self.logger.info(f"Using comprehensive list of {len(comprehensive_nse_stocks)} NSE stocks")
         return comprehensive_nse_stocks
     
-    def get_all_nse_symbols(self) -> List[str]:
+    def get_all_nse_symbols(self, complete_universe=True) -> List[str]:
         """
         Get NSE symbols using multiple methods
         """
         all_symbols = set()
         
-        # Method 1: Get comprehensive NSE stocks list
-        comprehensive_symbols = self.get_comprehensive_nse_stocks()
-        all_symbols.update(comprehensive_symbols)
+        if complete_universe:
+            # Method 1: Get ALL NSE stocks (4000+)
+            complete_symbols = self.get_all_nse_stocks_complete()
+            all_symbols.update(complete_symbols)
+            self.logger.info(f"Fetched complete NSE universe: {len(complete_symbols)} stocks")
+        else:
+            # Method 1: Get comprehensive NSE stocks list (1000+)
+            comprehensive_symbols = self.get_comprehensive_nse_stocks()
+            all_symbols.update(comprehensive_symbols)
         
         # Method 2: Add some popular stocks that might be missing
         additional_stocks = [
