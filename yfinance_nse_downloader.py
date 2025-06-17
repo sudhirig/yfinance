@@ -210,26 +210,30 @@ class YFinanceNSEDownloader:
     def download_and_store_company_data(self, symbol: str) -> bool:
         """Download and store all data for a single company"""
         try:
-            self.logger.info(f"Downloading data for {symbol}")
+            self.logger.info(f"📈 Starting download for {symbol}")
             ticker = yf.Ticker(symbol)
             
             # Get company info
             try:
                 info = ticker.info
                 if not info or len(info) < 5:
-                    self.logger.warning(f"No info data for {symbol}")
-                    return False
-                
-                company_id = self.get_or_create_company(symbol, info)
-                
-                # Store company metrics
-                self.store_company_metrics(company_id, info)
+                    self.logger.warning(f"⚠️ No info data for {symbol}")
+                    company_id = self.get_or_create_company(symbol)
+                else:
+                    company_id = self.get_or_create_company(symbol, info)
+                    # Store company metrics
+                    try:
+                        self.store_company_metrics(company_id, info)
+                        self.logger.info(f"✓ Stored company metrics for {symbol}")
+                    except Exception as e:
+                        self.logger.error(f"Error storing company metrics for {symbol}: {e}")
                 
             except Exception as e:
                 self.logger.error(f"Error getting info for {symbol}: {e}")
                 company_id = self.get_or_create_company(symbol)
             
             # Download historical data (5 years)
+            price_success = False
             try:
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=5*365)  # 5 years
@@ -237,29 +241,35 @@ class YFinanceNSEDownloader:
                 
                 if not hist_data.empty:
                     self.store_price_history(company_id, hist_data)
-                    self.logger.info(f"Stored {len(hist_data)} price records for {symbol}")
+                    self.logger.info(f"✓ Stored {len(hist_data)} price records for {symbol}")
+                    price_success = True
                 else:
-                    self.logger.warning(f"No historical data for {symbol}")
+                    self.logger.warning(f"⚠️ No historical data for {symbol}")
                     
             except Exception as e:
-                self.logger.error(f"Error downloading history for {symbol}: {e}")
+                self.logger.error(f"❌ Error downloading history for {symbol}: {e}")
             
             # Download financial statements
+            financials_success = False
             try:
+                self.logger.info(f"📊 Downloading financial statements for {symbol}")
                 # Annual financials
                 self.download_and_store_financials(ticker, company_id, symbol, 'annual')
                 
                 # Quarterly financials
                 self.download_and_store_financials(ticker, company_id, symbol, 'quarterly')
+                financials_success = True
                 
             except Exception as e:
-                self.logger.error(f"Error downloading financials for {symbol}: {e}")
+                self.logger.error(f"❌ Error downloading financials for {symbol}: {e}")
             
             # Download corporate actions
+            actions_success = False
             try:
                 self.download_and_store_corporate_actions(ticker, company_id, symbol)
+                actions_success = True
             except Exception as e:
-                self.logger.error(f"Error downloading corporate actions for {symbol}: {e}")
+                self.logger.error(f"❌ Error downloading corporate actions for {symbol}: {e}")
             
             # Log successful download
             cursor = self.conn.cursor()
@@ -270,11 +280,21 @@ class YFinanceNSEDownloader:
             cursor.close()
             
             self.conn.commit()
-            self.logger.info(f"✓ Successfully downloaded and stored data for {symbol}")
+            
+            # Summary log
+            status_summary = []
+            if price_success:
+                status_summary.append("Price✓")
+            if financials_success:
+                status_summary.append("Financials✓")
+            if actions_success:
+                status_summary.append("Actions✓")
+            
+            self.logger.info(f"🎯 {symbol} complete: {', '.join(status_summary) if status_summary else 'Basic info only'}")
             return True
             
         except Exception as e:
-            self.logger.error(f"✗ Error processing {symbol}: {e}")
+            self.logger.error(f"💥 Fatal error processing {symbol}: {e}")
             self.conn.rollback()
             return False
     
@@ -469,19 +489,37 @@ class YFinanceNSEDownloader:
                 cashflow = ticker.quarterly_cashflow
             
             # Store income statements
-            if not income_stmt.empty:
-                self.store_income_statements(company_id, income_stmt, period_type)
+            try:
+                if income_stmt is not None and not income_stmt.empty:
+                    self.store_income_statements(company_id, income_stmt, period_type)
+                    self.logger.info(f"Stored {period_type} income statements for {symbol}")
+                else:
+                    self.logger.warning(f"No {period_type} income statement data for {symbol}")
+            except Exception as e:
+                self.logger.error(f"Error storing {period_type} income statements for {symbol}: {e}")
             
             # Store balance sheets
-            if not balance_sheet.empty:
-                self.store_balance_sheets(company_id, balance_sheet, period_type)
+            try:
+                if balance_sheet is not None and not balance_sheet.empty:
+                    self.store_balance_sheets(company_id, balance_sheet, period_type)
+                    self.logger.info(f"Stored {period_type} balance sheets for {symbol}")
+                else:
+                    self.logger.warning(f"No {period_type} balance sheet data for {symbol}")
+            except Exception as e:
+                self.logger.error(f"Error storing {period_type} balance sheets for {symbol}: {e}")
             
             # Store cash flow statements
-            if not cashflow.empty:
-                self.store_cash_flow_statements(company_id, cashflow, period_type)
+            try:
+                if cashflow is not None and not cashflow.empty:
+                    self.store_cash_flow_statements(company_id, cashflow, period_type)
+                    self.logger.info(f"Stored {period_type} cash flow statements for {symbol}")
+                else:
+                    self.logger.warning(f"No {period_type} cash flow data for {symbol}")
+            except Exception as e:
+                self.logger.error(f"Error storing {period_type} cash flow statements for {symbol}: {e}")
                 
         except Exception as e:
-            self.logger.warning(f"Error downloading {period_type} financials for {symbol}: {e}")
+            self.logger.error(f"Error downloading {period_type} financials for {symbol}: {e}")
     
     def store_income_statements(self, company_id: int, data: pd.DataFrame, period_type: str):
         """Store income statement data"""
@@ -493,49 +531,55 @@ class YFinanceNSEDownloader:
             (company_id, period_type)
         )
         
+        records_inserted = 0
         for col in data.columns:
             period_ending = self.safe_convert_to_date(col)
             if not period_ending:
                 continue
             
-            cursor.execute("""
-                INSERT INTO income_statements (
-                    company_id, period_ending, period_type, total_revenue, cost_of_revenue,
-                    gross_profit, research_development, selling_general_administrative,
-                    total_operating_expenses, operating_income, ebit, ebitda,
-                    interest_income, interest_expense, other_income_expense_net,
-                    income_before_tax, tax_provision, net_income, net_income_common_stockholders,
-                    diluted_eps, basic_eps, diluted_average_shares, basic_average_shares,
-                    operating_expense, normalized_income, total_expenses
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (company_id, period_ending, period_type) DO NOTHING
-            """, (
-                company_id, period_ending, period_type,
-                self.safe_convert_to_int(data.loc['Total Revenue', col] if 'Total Revenue' in data.index else None),
-                self.safe_convert_to_int(data.loc['Cost Of Revenue', col] if 'Cost Of Revenue' in data.index else None),
-                self.safe_convert_to_int(data.loc['Gross Profit', col] if 'Gross Profit' in data.index else None),
-                self.safe_convert_to_int(data.loc['Research Development', col] if 'Research Development' in data.index else None),
-                self.safe_convert_to_int(data.loc['Selling General Administrative', col] if 'Selling General Administrative' in data.index else None),
-                self.safe_convert_to_int(data.loc['Total Operating Expenses', col] if 'Total Operating Expenses' in data.index else None),
-                self.safe_convert_to_int(data.loc['Operating Income', col] if 'Operating Income' in data.index else None),
-                self.safe_convert_to_int(data.loc['EBIT', col] if 'EBIT' in data.index else None),
-                self.safe_convert_to_int(data.loc['EBITDA', col] if 'EBITDA' in data.index else None),
-                self.safe_convert_to_int(data.loc['Interest Income', col] if 'Interest Income' in data.index else None),
-                self.safe_convert_to_int(data.loc['Interest Expense', col] if 'Interest Expense' in data.index else None),
-                self.safe_convert_to_int(data.loc['Other Income Expense Net', col] if 'Other Income Expense Net' in data.index else None),
-                self.safe_convert_to_int(data.loc['Income Before Tax', col] if 'Income Before Tax' in data.index else None),
-                self.safe_convert_to_int(data.loc['Tax Provision', col] if 'Tax Provision' in data.index else None),
-                self.safe_convert_to_int(data.loc['Net Income', col] if 'Net Income' in data.index else None),
-                self.safe_convert_to_int(data.loc['Net Income Common Stockholders', col] if 'Net Income Common Stockholders' in data.index else None),
-                self.safe_convert_to_float(data.loc['Diluted EPS', col] if 'Diluted EPS' in data.index else None),
-                self.safe_convert_to_float(data.loc['Basic EPS', col] if 'Basic EPS' in data.index else None),
-                self.safe_convert_to_int(data.loc['Diluted Average Shares', col] if 'Diluted Average Shares' in data.index else None),
-                self.safe_convert_to_int(data.loc['Basic Average Shares', col] if 'Basic Average Shares' in data.index else None),
-                self.safe_convert_to_int(data.loc['Operating Expense', col] if 'Operating Expense' in data.index else None),
-                self.safe_convert_to_int(data.loc['Normalized Income', col] if 'Normalized Income' in data.index else None),
-                self.safe_convert_to_int(data.loc['Total Expenses', col] if 'Total Expenses' in data.index else None)
-            ))
+            try:
+                cursor.execute("""
+                    INSERT INTO income_statements (
+                        company_id, period_ending, period_type, total_revenue, cost_of_revenue,
+                        gross_profit, research_development, selling_general_administrative,
+                        total_operating_expenses, operating_income, ebit, ebitda,
+                        interest_income, interest_expense, other_income_expense_net,
+                        income_before_tax, tax_provision, net_income, net_income_common_stockholders,
+                        diluted_eps, basic_eps, diluted_average_shares, basic_average_shares,
+                        operating_expense, normalized_income, total_expenses
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (company_id, period_ending, period_type) DO NOTHING
+                """, (
+                    company_id, period_ending, period_type,
+                    self.safe_convert_to_int(data.loc['Total Revenue', col] if 'Total Revenue' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Cost Of Revenue', col] if 'Cost Of Revenue' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Gross Profit', col] if 'Gross Profit' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Research Development', col] if 'Research Development' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Selling General Administrative', col] if 'Selling General Administrative' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Total Operating Expenses', col] if 'Total Operating Expenses' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Operating Income', col] if 'Operating Income' in data.index else None),
+                    self.safe_convert_to_int(data.loc['EBIT', col] if 'EBIT' in data.index else None),
+                    self.safe_convert_to_int(data.loc['EBITDA', col] if 'EBITDA' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Interest Income', col] if 'Interest Income' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Interest Expense', col] if 'Interest Expense' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Other Income Expense Net', col] if 'Other Income Expense Net' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Income Before Tax', col] if 'Income Before Tax' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Tax Provision', col] if 'Tax Provision' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Net Income', col] if 'Net Income' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Net Income Common Stockholders', col] if 'Net Income Common Stockholders' in data.index else None),
+                    self.safe_convert_to_float(data.loc['Diluted EPS', col] if 'Diluted EPS' in data.index else None),
+                    self.safe_convert_to_float(data.loc['Basic EPS', col] if 'Basic EPS' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Diluted Average Shares', col] if 'Diluted Average Shares' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Basic Average Shares', col] if 'Basic Average Shares' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Operating Expense', col] if 'Operating Expense' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Normalized Income', col] if 'Normalized Income' in data.index else None),
+                    self.safe_convert_to_int(data.loc['Total Expenses', col] if 'Total Expenses' in data.index else None)
+                ))
+                records_inserted += 1
+            except Exception as e:
+                self.logger.error(f"Error inserting income statement record for period {period_ending}: {e}")
         
+        self.logger.info(f"Inserted {records_inserted} income statement records ({period_type})")
         cursor.close()
     
     def store_balance_sheets(self, company_id: int, data: pd.DataFrame, period_type: str):
