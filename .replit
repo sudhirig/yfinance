@@ -24,7 +24,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main_data_loader.py --download-nse"
+args = "python yfinance_nse_downloader.py"
 
 [deployment]
 run = ["sh", "-c", "npm run dev"]
