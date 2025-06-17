@@ -48,8 +48,15 @@ def create_database_schema():
             with open(schema_file, 'r') as f:
                 schema_sql = f.read()
             
-            cursor.execute(schema_sql)
-            logger.info("✓ Database schema created successfully")
+            # Execute schema with proper error handling
+            try:
+                cursor.execute(schema_sql)
+                logger.info("✓ Database schema created successfully")
+            except psycopg2.Error as e:
+                if "already exists" in str(e):
+                    logger.info("✓ Database schema already exists, continuing...")
+                else:
+                    raise e
         else:
             logger.error(f"Schema file {schema_file} not found")
             return False
