@@ -187,10 +187,47 @@ def verify_data_load():
         logger.error(f"✗ Data verification failed: {e}")
         return False
 
+def download_all_nse_stocks():
+    """Download all NSE stocks directly from yfinance"""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        from yfinance_nse_downloader import YFinanceNSEDownloader
+        downloader = YFinanceNSEDownloader()
+        
+        logger.info("Starting NSE stocks download...")
+        success = downloader.download_all_nse_stocks()
+        
+        if success:
+            logger.info("✓ NSE stocks download completed successfully")
+        else:
+            logger.error("✗ NSE stocks download failed")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error in NSE stocks download: {e}")
+        return False
+
 def main():
     """Main function to orchestrate the data loading process"""
     logger = setup_logging()
     logger.info("=== YFinance Data Loader Started ===")
+    
+    # Check for command line arguments
+    import sys
+    mode = "csv"  # default mode
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--download-nse":
+            mode = "download"
+        elif sys.argv[1] == "--csv":
+            mode = "csv"
+        elif sys.argv[1] == "--help":
+            print("Usage:")
+            print("  python main_data_loader.py --csv          # Load from CSV files (default)")
+            print("  python main_data_loader.py --download-nse # Download all NSE stocks from yfinance")
+            print("  python main_data_loader.py --help         # Show this help")
+            return True
     
     # Step 1: Check database connection
     logger.info("Step 1: Checking database connection...")
@@ -198,26 +235,33 @@ def main():
         logger.error("Database connection failed. Please check your configuration.")
         return False
     
-    # Step 2: Check CSV files
-    logger.info("Step 2: Checking CSV files...")
-    if not check_csv_files():
-        logger.error("CSV files not found. Please ensure they are in the attached_assets directory.")
-        return False
-    
-    # Step 3: Create database schema
-    logger.info("Step 3: Creating database schema...")
+    # Step 2: Create database schema
+    logger.info("Step 2: Creating database schema...")
     if not create_database_schema():
         logger.error("Schema creation failed.")
         return False
     
-    # Step 4: Load data from CSV files
-    logger.info("Step 4: Loading data from CSV files...")
-    if not load_data_from_csv():
-        logger.error("Data loading failed.")
-        return False
+    if mode == "download":
+        # Download mode: Download all NSE stocks
+        logger.info("Step 3: Downloading all NSE stocks from yfinance...")
+        if not download_all_nse_stocks():
+            logger.error("NSE stocks download failed.")
+            return False
+    else:
+        # CSV mode: Load from existing CSV files
+        logger.info("Step 3: Checking CSV files...")
+        if not check_csv_files():
+            logger.error("CSV files not found. Please ensure they are in the attached_assets directory.")
+            logger.info("Tip: Use --download-nse to download stocks directly from yfinance")
+            return False
+        
+        logger.info("Step 4: Loading data from CSV files...")
+        if not load_data_from_csv():
+            logger.error("Data loading failed.")
+            return False
     
     # Step 5: Verify data load
-    logger.info("Step 5: Verifying data load...")
+    logger.info("Final Step: Verifying data load...")
     if not verify_data_load():
         logger.error("Data verification failed.")
         return False
@@ -228,6 +272,7 @@ def main():
     logger.info("1. SELECT * FROM company_overview;")
     logger.info("2. SELECT * FROM latest_price_data;")
     logger.info("3. SELECT * FROM annual_financials WHERE symbol = 'RELIANCE.NS';")
+    logger.info("4. SELECT symbol, long_name, sector, market_cap FROM company_overview ORDER BY market_cap DESC LIMIT 10;")
     
     return True
 
