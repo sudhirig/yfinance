@@ -21,13 +21,30 @@ print(multi_data)
 nse_ticker = yf.Ticker("RELIANCE.NS")
 
 # Download all available historical data
-df_all = nse_ticker.history(period="max")
-print("\nNSE - Reliance Industries (RELIANCE.NS) ALL available data:")
-print(df_all.head())
-print(df_all.tail())
+try:
+    df_all = nse_ticker.history(period="max")
+    print(f"\nNSE - Reliance Industries (RELIANCE.NS) historical data from {df_all.index.min()} to {df_all.index.max()}:")
+    print(f"Total records: {len(df_all)}")
+    print(df_all.head())
+    print(df_all.tail())
+except Exception as e:
+    print(f"Error downloading historical data: {e}")
 
 # Save to CSV
 df_all.to_csv("RELIANCE_NS_all_history.csv")
+print("✓ Historical data saved to RELIANCE_NS_all_history.csv")
+
+# Display key stock information
+try:
+    info = nse_ticker.info
+    print(f"\n📊 Key Info for {info.get('longName', 'RELIANCE.NS')}:")
+    print(f"   Sector: {info.get('sector', 'N/A')}")
+    print(f"   Industry: {info.get('industry', 'N/A')}")
+    print(f"   Market Cap: ₹{info.get('marketCap', 0):,.0f}")
+    print(f"   Current Price: ₹{info.get('regularMarketPrice', 0):.2f}")
+    print(f"   52W Range: ₹{info.get('fiftyTwoWeekLow', 0):.2f} - ₹{info.get('fiftyTwoWeekHigh', 0):.2f}")
+except Exception as e:
+    print(f"Could not fetch stock info: {e}")
 
 # Last 1 month data (for reference)
 nse_data = nse_ticker.history(period="1mo")
