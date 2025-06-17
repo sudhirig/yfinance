@@ -20,9 +20,9 @@ class YFinanceNSEDownloader:
         self.db_config = get_database_config()
         self.conn = None
         self.setup_logging()
-        self.batch_size = 10  # Process stocks in batches
-        self.delay_between_stocks = 1  # Delay in seconds
-        self.delay_between_batches = 5  # Delay between batches
+        self.batch_size = 20  # Process stocks in larger batches for efficiency
+        self.delay_between_stocks = 0.5  # Reduced delay for faster processing
+        self.delay_between_batches = 3  # Reduced batch delay
         
     def setup_logging(self):
         logging.basicConfig(

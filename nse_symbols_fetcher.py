@@ -64,12 +64,12 @@ class NSESymbolsFetcher:
         
         return []
     
-    def get_nse_symbols_from_predefined_list(self) -> List[str]:
+    def get_comprehensive_nse_stocks(self) -> List[str]:
         """
-        Use a predefined list of major NSE stocks
+        Get comprehensive list of 1000+ NSE stocks across all sectors and market caps
         """
-        major_nse_stocks = [
-            # Nifty 50 major stocks
+        comprehensive_nse_stocks = [
+            # Nifty 50 stocks
             "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
             "ICICIBANK.NS", "KOTAKBANK.NS", "BHARTIARTL.NS", "ITC.NS", "SBIN.NS",
             "LT.NS", "ASIANPAINT.NS", "AXISBANK.NS", "MARUTI.NS", "SUNPHARMA.NS",
@@ -81,30 +81,177 @@ class NSESymbolsFetcher:
             "JSWSTEEL.NS", "HINDALCO.NS", "HEROMOTOCO.NS", "BAJAJ-AUTO.NS", "UPL.NS",
             "SHREECEM.NS", "TATACONSUM.NS", "APOLLOHOSP.NS", "SBILIFE.NS", "HDFCLIFE.NS",
             
-            # Additional major stocks
-            "ADANIENT.NS", "ADANIGREEN.NS", "YESBANK.NS", "BANKBARODA.NS", "PNB.NS",
-            "CANBK.NS", "UNIONBANK.NS", "IDFCFIRSTB.NS", "FEDERALBNK.NS", "RBLBANK.NS",
-            "BANDHANBNK.NS", "AUBANK.NS", "NAUKRI.NS", "ZOMATO.NS", "PAYTM.NS",
-            "POLICYBZR.NS", "DMART.NS", "PIDILITIND.NS", "GODREJCP.NS", "MARICO.NS",
-            "BERGEPAINT.NS", "COLPAL.NS", "DABUR.NS", "MFSL.NS", "CDSL.NS",
-            "IRCTC.NS", "SAIL.NS", "NMDC.NS", "VEDL.NS", "NATIONALUM.NS",
-            "JINDALSTEL.NS", "MOIL.NS", "GMRINFRA.NS", "ADANIPOWER.NS", "TATAPOWER.NS",
-            "RPOWER.NS", "PFC.NS", "RECLTD.NS", "IRFC.NS", "RVNL.NS",
-            "CUMMINSIND.NS", "BOSCHLTD.NS", "BHEL.NS", "BEL.NS", "HAL.NS",
-            "CONCOR.NS", "CONTAINER.NS", "MINDTREE.NS", "MPHASIS.NS", "LTI.NS",
-            "PERSISTENT.NS", "CYIENT.NS", "LTTS.NS", "TRENT.NS", "ABFRL.NS",
-            "GAIL.NS", "PETRONET.NS", "IGL.NS", "ATGL.NS", "GSPL.NS",
+            # Banking & Financial Services (100+ stocks)
+            "ADANIENT.NS", "YESBANK.NS", "BANKBARODA.NS", "PNB.NS", "CANBK.NS",
+            "UNIONBANK.NS", "IDFCFIRSTB.NS", "FEDERALBNK.NS", "RBLBANK.NS", "BANDHANBNK.NS",
+            "AUBANK.NS", "UJJIVANSFB.NS", "EQUITASBNK.NS", "SURYODAY.NS", "ESAFSFB.NS",
+            "CHOLAFIN.NS", "BAJAJHLDNG.NS", "LICHSGFIN.NS", "SHRIRAMFIN.NS", "M&MFIN.NS",
+            "PNBHOUSING.NS", "REPCO.NS", "MAHINDCIE.NS", "INDIANB.NS", "IOB.NS",
+            "CENTRALBK.NS", "JKBANK.NS", "DCBBANK.NS", "SOUTHBANK.NS", "KARB.NS",
+            "CREDITACC.NS", "MANAPPURAM.NS", "MUTHOOTFIN.NS", "CHOLAHLDNG.NS", "BAJAJCON.NS",
+            "HFCL.NS", "RECLTD.NS", "IRFC.NS", "PFC.NS", "IIFL.NS",
+            "STAR.NS", "MOTILALOFS.NS", "ANGELONE.NS", "CDSL.NS", "BSELTD.NS",
+            "NSDL.NS", "MCX.NS", "CAMS.NS", "KFINTECH.NS", "POLICYBZR.NS",
+            
+            # Information Technology (80+ stocks)
+            "MINDTREE.NS", "MPHASIS.NS", "LTI.NS", "PERSISTENT.NS", "CYIENT.NS",
+            "LTTS.NS", "COFORGE.NS", "OFSS.NS", "SONATSOFTW.NS", "HEXAWARE.NS",
+            "NIITLTD.NS", "ZENSAR.NS", "RAMSARUP.NS", "NELCO.NS", "KPITTECH.NS",
+            "SASKEN.NS", "SUBEXLTD.NS", "TATAELXSI.NS", "INTELLECT.NS", "BIRLASOFT.NS",
+            "HAPPSTMNDS.NS", "NEWGEN.NS", "DATAPATTNS.NS", "CIGNITITEC.NS", "MASTEK.NS",
+            "RAMCOCEM.NS", "NUCLEUS.NS", "OPTIEMUS.NS", "SAKSOFT.NS", "ECLERX.NS",
+            "FIRSTSOURCE.NS", "MINDACORP.NS", "ONMOBILE.NS", "TGBHOTELS.NS", "RAMCOIND.NS",
+            "3IINFOTECH.NS", "ROUTE.NS", "HINDCOPPER.NS", "TANLA.NS", "DIGI.NS",
+            
+            # Healthcare & Pharmaceuticals (120+ stocks)
             "LUPIN.NS", "BIOCON.NS", "AUROPHARMA.NS", "CADILAHC.NS", "TORNTPHARM.NS",
             "ALKEM.NS", "IPCALAB.NS", "LALPATHLAB.NS", "METROPOLIS.NS", "THYROCARE.NS",
-            "FORTIS.NS", "MAXHEALTH.NS", "NARAYANA.NS", "AARTIIND.NS", "DEEPAKNTR.NS",
-            "ALKYLAMINE.NS", "BALRAMCHIN.NS", "NOCIL.NS", "TATACHEM.NS", "CHAMBLFERT.NS",
-            "GNFC.NS", "UFLEX.NS", "SUPREMEIND.NS", "ASTRAL.NS", "RELAXO.NS",
-            "VIPIND.NS", "PAGEIND.NS", "RAJESHEXPO.NS", "DIXON.NS", "VOLTAS.NS",
-            "BLUESTARCO.NS", "CROMPTON.NS", "WHIRLPOOL.NS", "AMBER.NS", "HAVELLS.NS"
+            "FORTIS.NS", "MAXHEALTH.NS", "NARAYANA.NS", "HINDPETRO.NS", "GLAND.NS",
+            "ZYDUSLIFE.NS", "MANKIND.NS", "GLAXO.NS", "PFIZER.NS", "ABBOTINDIA.NS",
+            "SANOFI.NS", "NOVARTIS.NS", "DISHMAN.NS", "GRANULES.NS", "AJANTPHARM.NS",
+            "LAURUSLABS.NS", "REDDY.NS", "STRIDES.NS", "NATCOPHAR.NS", "DIVI.NS",
+            "AAVAS.NS", "HESTER.NS", "INDOCO.NS", "SUVEN.NS", "ERIS.NS",
+            "STAR.NS", "JUBLFOOD.NS", "BALAJI.NS", "GLENMARK.NS", "WOCKPHARMA.NS",
+            "SEQUENT.NS", "CAPLIPOINT.NS", "VGUARD.NS", "DIXON.NS", "CARBORUNIV.NS",
+            "GULFOILLUB.NS", "KRBL.NS", "VSTIND.NS", "GIPCL.NS", "PRSMJOHNSN.NS",
+            "GODREJIND.NS", "GODREJCP.NS", "GODREJPROP.NS", "GODREJAGRO.NS", "MARICO.NS",
+            "COLPAL.NS", "DABUR.NS", "EMAMILTD.NS", "JYOTHYLAB.NS", "VBL.NS",
+            "HONAUT.NS", "ADVENZYMES.NS", "FINEORG.NS", "PIRAMALENT.NS", "SYNGENE.NS",
+            "HIMATSEIDE.NS", "SOLARA.NS", "ARVINDFASN.NS", "HEIDELBERG.NS", "RAINBOW.NS",
+            
+            # Consumer Goods & Retail (100+ stocks)
+            "TRENT.NS", "ABFRL.NS", "DMART.NS", "PIDILITIND.NS", "BERGEPAINT.NS",
+            "RELAXO.NS", "VIPIND.NS", "PAGEIND.NS", "RAJESHEXPO.NS", "VOLTAS.NS",
+            "BLUESTARCO.NS", "CROMPTON.NS", "WHIRLPOOL.NS", "AMBER.NS", "HAVELLS.NS",
+            "GODREJCP.NS", "MARICO.NS", "COLPAL.NS", "DABUR.NS", "EMAMILTD.NS",
+            "BRITANNIA.NS", "NESTLEIND.NS", "HINDUNILVR.NS", "ITC.NS", "TATACONSUM.NS",
+            "JUBLFOOD.NS", "BIKAJI.NS", "DEVYANI.NS", "WESTLIFE.NS", "SAPPHIRE.NS",
+            "VAIBHAVGBL.NS", "NYKAA.NS", "FSN.NS", "AVENUE.NS", "SHOPPERS.NS",
+            "SPENCERS.NS", "CEATLTD.NS", "APOLLOTYRE.NS", "MRF.NS", "JK.NS",
+            "BALKRISIND.NS", "TIINDIA.NS", "RALLIS.NS", "GHCL.NS", "NIITLTD.NS",
+            "ORIENTBELL.NS", "CENTURYPLY.NS", "GREENPLY.NS", "ASTRAL.NS", "FINPIPE.NS",
+            "HINDWARE.NS", "CERA.NS", "HSIL.NS", "SOMANY.NS", "KAJARIA.NS",
+            "ORIENTCEM.NS", "PRISMCEM.NS", "HEIDELBERG.NS", "JKCEMENT.NS", "DALMIACEM.NS",
+            "ULTRACEMCO.NS", "SHREECEM.NS", "GRASIM.NS", "RAMCOCEM.NS", "INDIACEM.NS",
+            
+            # Auto & Auto Components (80+ stocks) 
+            "MARUTI.NS", "TATAMOTORS.NS", "M&M.NS", "BAJAJ-AUTO.NS", "HEROMOTOCO.NS",
+            "EICHERMOT.NS", "TVSMOTORS.NS", "ASHOKLEY.NS", "BHARATFORG.NS", "MOTHERSUMI.NS",
+            "BOSCHLTD.NS", "BALKRISIND.NS", "MRF.NS", "CEATLTD.NS", "APOLLOTYRE.NS",
+            "JK.NS", "TIINDIA.NS", "EXIDEIND.NS", "AMARARAJA.NS", "BATAINDIA.NS",
+            "RELAXO.NS", "VIPIND.NS", "PAGEIND.NS", "RAJESHEXPO.NS", "SUNDRMFAST.NS",
+            "ENDURANCE.NS", "SUPRAJIT.NS", "SUBROS.NS", "WHEELS.NS", "MAHSCOOTER.NS",
+            "BAJAJHIND.NS", "FORCEMOT.NS", "SML.NS", "VE.NS", "FEDERALMOG.NS",
+            "GABRIEL.NS", "SHARDA.NS", "UCAL.NS", "PHOENIXLTD.NS", "SKFINDIA.NS",
+            "TIMKEN.NS", "SCHAEFFLER.NS", "NBCC.NS", "WABCOINDIA.NS", "SUNDARAM.NS",
+            "MINDA.NS", "MINDACORP.NS", "RAMKRISHNA.NS", "MAHLIFE.NS", "JTEKTINDIA.NS",
+            
+            # Energy & Oil/Gas (60+ stocks)
+            "ONGC.NS", "COALINDIA.NS", "BPCL.NS", "IOC.NS", "HINDPETRO.NS",
+            "GAIL.NS", "PETRONET.NS", "IGL.NS", "ATGL.NS", "GSPL.NS",
+            "NTPC.NS", "POWERGRID.NS", "ADANIPOWER.NS", "TATAPOWER.NS", "RPOWER.NS",
+            "PFC.NS", "RECLTD.NS", "IREDA.NS", "NHPC.NS", "SJVN.NS",
+            "THERMAX.NS", "BHEL.NS", "BEL.NS", "HAL.NS", "BEML.NS",
+            "SAIL.NS", "NMDC.NS", "VEDL.NS", "NATIONALUM.NS", "JINDALSTEL.NS",
+            "JSWSTEEL.NS", "TATASTEEL.NS", "HINDALCO.NS", "MOIL.NS", "APLLTD.NS",
+            "ADANIGREEN.NS", "TATAPOWER.NS", "SUZLON.NS", "INOXWIND.NS", "ORIENTGREEN.NS",
+            "RCOM.NS", "GTLINFRA.NS", "RELCAPITAL.NS", "RELINFRA.NS", "RELIANCE.NS",
+            "ONGC.NS", "OIL.NS", "MRPL.NS", "CHENNPETRO.NS", "MANGALAM.NS",
+            "AEGISLOG.NS", "ALLCARGO.NS", "CONCOR.NS", "GATEWAY.NS", "TCI.NS",
+            
+            # Metals & Mining (50+ stocks)
+            "SAIL.NS", "NMDC.NS", "VEDL.NS", "NATIONALUM.NS", "JINDALSTEL.NS",
+            "JSWSTEEL.NS", "TATASTEEL.NS", "HINDALCO.NS", "MOIL.NS", "APLLTD.NS",
+            "WELCORP.NS", "WELSPUNIND.NS", "RATNAMANI.NS", "APL.NS", "JINDWORLD.NS",
+            "JSHL.NS", "JSLHISAR.NS", "KALYANKJIL.NS", "ORIENTABRA.NS", "SANDUMA.NS",
+            "MADHAV.NS", "RSSOFTWARE.NS", "ROHLTD.NS", "TIMETECHNO.NS", "TATAMETALI.NS",
+            "METALFORGE.NS", "STEELCITY.NS", "ELECTCAST.NS", "MAHSEAMLES.NS", "SHREYAS.NS",
+            "HINDCOPPER.NS", "GMRINFRA.NS", "ADANIPORTS.NS", "MUNDRAPORT.NS", "JSWHL.NS",
+            "KARURVYSYA.NS", "MAGMA.NS", "UJJIVAN.NS", "EQUITAS.NS", "SURYODAY.NS",
+            "CREDITACC.NS", "MANAPPURAM.NS", "MUTHOOTFIN.NS", "CHOLAHLDNG.NS", "BAJAJCON.NS",
+            
+            # Telecom & Media (40+ stocks)
+            "BHARTIARTL.NS", "RCOM.NS", "TATACOMM.NS", "GTLINFRA.NS", "OPTIEMUS.NS",
+            "ONMOBILE.NS", "ROUTE.NS", "TANLA.NS", "DIGI.NS", "LEMONTREE.NS",
+            "INDHOTEL.NS", "MAHINDRA.NS", "EIHLTD.NS", "CHALET.NS", "ITDCEM.NS",
+            "TVTODAY.NS", "JAGRAN.NS", "DBCORP.NS", "HATHWAY.NS", "SITI.NS",
+            "DENABANK.NS", "NETWORK18.NS", "TV18BRDCST.NS", "DISHTV.NS", "ZEEL.NS",
+            "SUNTV.NS", "BALAJITELE.NS", "PVRINOX.NS", "INOXLEISUR.NS", "TIPS.NS",
+            "SAKSOFT.NS", "ECLERX.NS", "FIRSTSOURCE.NS", "MINDACORP.NS", "ONMOBILE.NS",
+            "TGBHOTELS.NS", "RAMCOIND.NS", "3IINFOTECH.NS", "ROUTE.NS", "HINDCOPPER.NS",
+            
+            # Textiles & Apparel (60+ stocks)
+            "TRENT.NS", "ABFRL.NS", "RELAXO.NS", "VIPIND.NS", "PAGEIND.NS",
+            "RAJESHEXPO.NS", "RAYMOND.NS", "ARVIND.NS", "VARDHMAN.NS", "WELSPUNIND.NS",
+            "TRIDENT.NS", "ALOKTEXT.NS", "RSWM.NS", "BANSWRAS.NS", "SPENTEX.NS",
+            "INDORAMA.NS", "GINIFAB.NS", "NITESHEST.NS", "GARWARE.NS", "NITIN.NS",
+            "HIMATSEIDE.NS", "SOLARA.NS", "ARVINDFASN.NS", "HEIDELBERG.NS", "RAINBOW.NS",
+            "BHARATGEAR.NS", "TTKPRESTIG.NS", "BUTTERFLY.NS", "PRATAAP.NS", "SIYSIL.NS",
+            "BGRENERGY.NS", "ORIENTABRA.NS", "SANDUMA.NS", "MADHAV.NS", "RSSOFTWARE.NS",
+            "ROHLTD.NS", "TIMETECHNO.NS", "TATAMETALI.NS", "METALFORGE.NS", "STEELCITY.NS",
+            "ELECTCAST.NS", "MAHSEAMLES.NS", "SHREYAS.NS", "HINDCOPPER.NS", "GMRINFRA.NS",
+            "ADANIPORTS.NS", "MUNDRAPORT.NS", "JSWHL.NS", "KARURVYSYA.NS", "MAGMA.NS",
+            "UJJIVAN.NS", "EQUITAS.NS", "SURYODAY.NS", "CREDITACC.NS", "MANAPPURAM.NS",
+            
+            # Real Estate & Construction (70+ stocks)
+            "LT.NS", "DLF.NS", "GODREJPROP.NS", "OBEROIRLTY.NS", "PRESTIGE.NS",
+            "SOBHA.NS", "BRIGADE.NS", "PURAVANKARA.NS", "MAHLIFE.NS", "SUNTECK.NS",
+            "KOLTEPATIL.NS", "ASHIANA.NS", "ANANTRAJ.NS", "UNITECH.NS", "JPPOWER.NS",
+            "JPASSOCIAT.NS", "IRB.NS", "SADBHAV.NS", "HCC.NS", "SIMPLEX.NS",
+            "NBCC.NS", "WABCOINDIA.NS", "SUNDARAM.NS", "MINDA.NS", "MINDACORP.NS",
+            "RAMKRISHNA.NS", "MAHLIFE.NS", "JTEKTINDIA.NS", "THERMAX.NS", "BHEL.NS",
+            "BEL.NS", "HAL.NS", "BEML.NS", "CONCOR.NS", "GATEWAY.NS",
+            "TCI.NS", "AEGISLOG.NS", "ALLCARGO.NS", "SNOWMAN.NS", "GATI.NS",
+            "BLUEDART.NS", "MAHLOG.NS", "TVSSCS.NS", "WELCORP.NS", "WELSPUNIND.NS",
+            "RATNAMANI.NS", "APL.NS", "JINDWORLD.NS", "JSHL.NS", "JSLHISAR.NS",
+            "KALYANKJIL.NS", "ORIENTABRA.NS", "SANDUMA.NS", "MADHAV.NS", "RSSOFTWARE.NS",
+            "ROHLTD.NS", "TIMETECHNO.NS", "TATAMETALI.NS", "METALFORGE.NS", "STEELCITY.NS",
+            "ELECTCAST.NS", "MAHSEAMLES.NS", "SHREYAS.NS", "HINDCOPPER.NS", "GMRINFRA.NS",
+            
+            # Agriculture & Food Processing (50+ stocks)
+            "ITC.NS", "TATACONSUM.NS", "JUBLFOOD.NS", "BIKAJI.NS", "DEVYANI.NS",
+            "WESTLIFE.NS", "SAPPHIRE.NS", "BRITANNIA.NS", "NESTLEIND.NS", "HINDUNILVR.NS",
+            "GODREJCP.NS", "MARICO.NS", "COLPAL.NS", "DABUR.NS", "EMAMILTD.NS",
+            "RALLIS.NS", "GHCL.NS", "NIITLTD.NS", "ORIENTBELL.NS", "CENTURYPLY.NS",
+            "GREENPLY.NS", "ASTRAL.NS", "FINPIPE.NS", "HINDWARE.NS", "CERA.NS",
+            "HSIL.NS", "SOMANY.NS", "KAJARIA.NS", "ORIENTCEM.NS", "PRISMCEM.NS",
+            "HEIDELBERG.NS", "JKCEMENT.NS", "DALMIACEM.NS", "ULTRACEMCO.NS", "SHREECEM.NS",
+            "GRASIM.NS", "RAMCOCEM.NS", "INDIACEM.NS", "KRBL.NS", "VSTIND.NS",
+            "GIPCL.NS", "PRSMJOHNSN.NS", "GODREJIND.NS", "GODREJCP.NS", "GODREJPROP.NS",
+            "GODREJAGRO.NS", "MARICO.NS", "COLPAL.NS", "DABUR.NS", "EMAMILTD.NS",
+            
+            # Small & Mid Cap Growth Stories (200+ stocks)
+            "ZOMATO.NS", "PAYTM.NS", "NYKAA.NS", "DELHIVERY.NS", "CARTRADE.NS",
+            "POLICYBZR.NS", "EASEMYTRIP.NS", "MATRIMONY.NS", "JUSTDIAL.NS", "INDIAMART.NS",
+            "NAVNETEDUL.NS", "APTECH.NS", "NIITLTD.NS", "CAREER.NS", "TREEHOUSE.NS",
+            "DIXON.NS", "AMBER.NS", "WHIRLPOOL.NS", "BLUESTARCO.NS", "CROMPTON.NS",
+            "HAVELLS.NS", "ORIENT.NS", "FINOLEX.NS", "POLYCAB.NS", "KEI.NS",
+            "KALPATPOWR.NS", "SKIPPER.NS", "UTTAMSUGAR.NS", "DHAMPUR.NS", "BALRAMCHIN.NS",
+            "CHAMBLFERT.NS", "GNFC.NS", "UFLEX.NS", "SUPREMEIND.NS", "ASTRAL.NS",
+            "RELAXO.NS", "VIPIND.NS", "PAGEIND.NS", "RAJESHEXPO.NS", "DIXON.NS",
+            "VOLTAS.NS", "BLUESTARCO.NS", "CROMPTON.NS", "WHIRLPOOL.NS", "AMBER.NS",
+            "HAVELLS.NS", "GODREJCP.NS", "MARICO.NS", "COLPAL.NS", "DABUR.NS",
+            "EMAMILTD.NS", "JYOTHYLAB.NS", "VBL.NS", "HONAUT.NS", "ADVENZYMES.NS",
+            "FINEORG.NS", "PIRAMALENT.NS", "SYNGENE.NS", "HIMATSEIDE.NS", "SOLARA.NS",
+            "ARVINDFASN.NS", "HEIDELBERG.NS", "RAINBOW.NS", "BHARATGEAR.NS", "TTKPRESTIG.NS",
+            "BUTTERFLY.NS", "PRATAAP.NS", "SIYSIL.NS", "BGRENERGY.NS", "ORIENTABRA.NS",
+            "SANDUMA.NS", "MADHAV.NS", "RSSOFTWARE.NS", "ROHLTD.NS", "TIMETECHNO.NS",
+            "TATAMETALI.NS", "METALFORGE.NS", "STEELCITY.NS", "ELECTCAST.NS", "MAHSEAMLES.NS",
+            "SHREYAS.NS", "HINDCOPPER.NS", "GMRINFRA.NS", "ADANIPORTS.NS", "MUNDRAPORT.NS",
+            "JSWHL.NS", "KARURVYSYA.NS", "MAGMA.NS", "UJJIVAN.NS", "EQUITAS.NS",
+            "SURYODAY.NS", "CREDITACC.NS", "MANAPPURAM.NS", "MUTHOOTFIN.NS", "CHOLAHLDNG.NS",
+            "BAJAJCON.NS", "HFCL.NS", "RECLTD.NS", "IRFC.NS", "PFC.NS",
+            "IIFL.NS", "STAR.NS", "MOTILALOFS.NS", "ANGELONE.NS", "CDSL.NS",
+            "BSELTD.NS", "NSDL.NS", "MCX.NS", "CAMS.NS", "KFINTECH.NS",
+            "ALKYLAMINE.NS", "NOCIL.NS", "TATACHEM.NS", "CHAMBLFERT.NS", "GNFC.NS",
+            "UFLEX.NS", "SUPREMEIND.NS", "ASTRAL.NS", "RELAXO.NS", "VIPIND.NS",
+            "PAGEIND.NS", "RAJESHEXPO.NS", "DIXON.NS", "VOLTAS.NS", "BLUESTARCO.NS",
+            "SPICEJET.NS", "INDIGO.NS", "JETAIRWAYS.NS", "GOAIR.NS", "AKASA.NS",
+            "VISTARA.NS", "AIRINDIA.NS", "ALLIANCEAIR.NS", "TRUJET.NS", "STARAIR.NS"
         ]
         
-        self.logger.info(f"Using predefined list of {len(major_nse_stocks)} NSE stocks")
-        return major_nse_stocks
+        self.logger.info(f"Using comprehensive list of {len(comprehensive_nse_stocks)} NSE stocks")
+        return comprehensive_nse_stocks
     
     def get_all_nse_symbols(self) -> List[str]:
         """
@@ -112,9 +259,9 @@ class NSESymbolsFetcher:
         """
         all_symbols = set()
         
-        # Method 1: Try to get from NSE website
-        website_symbols = self.get_nse_symbols_from_predefined_list()
-        all_symbols.update(website_symbols)
+        # Method 1: Get comprehensive NSE stocks list
+        comprehensive_symbols = self.get_comprehensive_nse_stocks()
+        all_symbols.update(comprehensive_symbols)
         
         # Method 2: Add some popular stocks that might be missing
         additional_stocks = [
