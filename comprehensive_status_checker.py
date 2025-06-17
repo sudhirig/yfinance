@@ -80,17 +80,20 @@ class ComprehensiveStatusChecker:
                 total_records = cursor.fetchone()[0]
                 
                 # Get unique companies if company_id exists
-                cursor.execute(f"""
-                    SELECT column_name FROM information_schema.columns 
-                    WHERE table_name = '{table}' AND column_name = 'company_id'
-                """)
-                has_company_id = cursor.fetchone() is not None
-                
-                if has_company_id:
-                    cursor.execute(f"SELECT COUNT(DISTINCT company_id) FROM {table}")
-                    unique_companies = cursor.fetchone()[0]
-                else:
-                    unique_companies = total_records if table == 'companies' else 'N/A'
+                try:
+                    cursor.execute(f"""
+                        SELECT column_name FROM information_schema.columns 
+                        WHERE table_name = '{table}' AND column_name = 'company_id'
+                    """)
+                    has_company_id = cursor.fetchone() is not None
+                    
+                    if has_company_id:
+                        cursor.execute(f"SELECT COUNT(DISTINCT company_id) FROM {table}")
+                        unique_companies = cursor.fetchone()[0]
+                    else:
+                        unique_companies = total_records if table == 'companies' else 'N/A'
+                except Exception as e:
+                    unique_companies = 'N/A'
                 
                 table_stats[table] = {
                     'records': total_records,
