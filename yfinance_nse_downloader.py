@@ -20,9 +20,9 @@ class YFinanceNSEDownloader:
         self.db_config = get_database_config()
         self.conn = None
         self.setup_logging()
-        self.batch_size = 20  # Process stocks in larger batches for efficiency
-        self.delay_between_stocks = 0.5  # Reduced delay for faster processing
-        self.delay_between_batches = 3  # Reduced batch delay
+        self.batch_size = 50  # Larger batches for 4000+ stocks efficiency
+        self.delay_between_stocks = 0.3  # Optimized delay for high volume
+        self.delay_between_batches = 2  # Reduced batch delay for faster processing
         
     def setup_logging(self):
         logging.basicConfig(
@@ -253,12 +253,26 @@ class YFinanceNSEDownloader:
             financials_success = False
             try:
                 self.logger.info(f"📊 Downloading financial statements for {symbol}")
-                # Annual financials
-                self.download_and_store_financials(ticker, company_id, symbol, 'annual')
                 
-                # Quarterly financials
-                self.download_and_store_financials(ticker, company_id, symbol, 'quarterly')
-                financials_success = True
+                # Annual financials - try each type separately
+                annual_success = False
+                try:
+                    self.download_and_store_financials(ticker, company_id, symbol, 'annual')
+                    annual_success = True
+                    self.logger.info(f"✓ Annual financials downloaded for {symbol}")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Annual financials failed for {symbol}: {e}")
+                
+                # Quarterly financials - try each type separately
+                quarterly_success = False
+                try:
+                    self.download_and_store_financials(ticker, company_id, symbol, 'quarterly')
+                    quarterly_success = True
+                    self.logger.info(f"✓ Quarterly financials downloaded for {symbol}")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Quarterly financials failed for {symbol}: {e}")
+                
+                financials_success = annual_success or quarterly_success
                 
             except Exception as e:
                 self.logger.error(f"❌ Error downloading financials for {symbol}: {e}")
@@ -765,7 +779,7 @@ class YFinanceNSEDownloader:
         except Exception as e:
             self.logger.warning(f"Error downloading corporate actions for {symbol}: {e}")
     
-    def download_all_nse_stocks(self, symbols_file: str = "nse_symbols.txt"):
+    def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt"):
         """Download data for all NSE stocks"""
         try:
             self.connect_db()
@@ -787,33 +801,47 @@ class YFinanceNSEDownloader:
                 fetcher.save_symbols_to_file(symbols, symbols_file)
                 self.logger.info(f"Generated new symbols file with {len(symbols)} NSE stocks")
             
-            self.logger.info(f"Starting download for {len(symbols)} NSE stocks")
+            self.logger.info(f"🚀 Starting download for {len(symbols)} NSE stocks")
+            self.logger.info(f"📊 Processing in batches of {self.batch_size} stocks")
+            self.logger.info(f"⏱️ Estimated completion time: {(len(symbols) * self.delay_between_stocks + (len(symbols)//self.batch_size) * self.delay_between_batches) / 60:.1f} minutes")
             
             # Process stocks in batches
             successful_downloads = 0
             failed_downloads = 0
+            total_batches = (len(symbols) + self.batch_size - 1) // self.batch_size
             
             for i in range(0, len(symbols), self.batch_size):
                 batch = symbols[i:i + self.batch_size]
-                self.logger.info(f"Processing batch {i//self.batch_size + 1}: {batch}")
+                batch_num = i//self.batch_size + 1
                 
-                for symbol in batch:
+                self.logger.info(f"📦 Processing batch {batch_num}/{total_batches} ({len(batch)} stocks): Progress {successful_downloads + failed_downloads}/{len(symbols)}")
+                
+                batch_start_time = time.time()
+                batch_successful = 0
+                
+                for j, symbol in enumerate(batch):
                     try:
+                        self.logger.info(f"  📈 [{batch_num}.{j+1}] Processing {symbol}")
                         if self.download_and_store_company_data(symbol):
                             successful_downloads += 1
+                            batch_successful += 1
                         else:
                             failed_downloads += 1
                         
                         time.sleep(self.delay_between_stocks)  # Rate limiting
                         
                     except Exception as e:
-                        self.logger.error(f"Error processing {symbol}: {e}")
+                        self.logger.error(f"❌ Error processing {symbol}: {e}")
                         failed_downloads += 1
                         continue
                 
+                batch_time = time.time() - batch_start_time
+                self.logger.info(f"✅ Batch {batch_num} completed: {batch_successful}/{len(batch)} successful in {batch_time:.1f}s")
+                self.logger.info(f"📊 Overall progress: {successful_downloads} successful, {failed_downloads} failed, {len(symbols) - successful_downloads - failed_downloads} remaining")
+                
                 # Delay between batches
                 if i + self.batch_size < len(symbols):
-                    self.logger.info(f"Completed batch. Waiting {self.delay_between_batches} seconds...")
+                    self.logger.info(f"⏸️ Waiting {self.delay_between_batches}s before next batch...")
                     time.sleep(self.delay_between_batches)
             
             self.logger.info(f"Download completed! Successful: {successful_downloads}, Failed: {failed_downloads}")
