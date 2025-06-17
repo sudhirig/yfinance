@@ -68,9 +68,18 @@ class YFinanceNSEDownloader:
                 with open(schema_file, 'r') as f:
                     schema_sql = f.read()
                 
-                cursor.execute(schema_sql)
-                self.conn.commit()
-                self.logger.info("✓ Database schema created successfully")
+                # Execute schema with proper error handling
+                try:
+                    cursor.execute(schema_sql)
+                    self.conn.commit()
+                    self.logger.info("✓ Database schema created successfully")
+                except psycopg2.Error as e:
+                    if "already exists" in str(e):
+                        self.logger.info("✓ Database schema already exists, continuing...")
+                        self.conn.rollback()  # Rollback the failed transaction
+                    else:
+                        raise e
+                
                 cursor.close()
                 return True
             else:
