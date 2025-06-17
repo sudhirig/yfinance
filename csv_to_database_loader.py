@@ -425,7 +425,10 @@ class CSVToDatabaseLoader:
             cursor = self.conn.cursor()
             
             # Clear existing data
-            table_name = f"{statement_type}_statements"
+            if statement_type == 'balance_sheet':
+                table_name = "balance_sheets"
+            else:
+                table_name = f"{statement_type}_statements"
             cursor.execute(
                 f"DELETE FROM {table_name} WHERE company_id = %s AND period_type = %s",
                 (company_id, period_type)
