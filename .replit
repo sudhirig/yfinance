@@ -6,7 +6,7 @@ channel = "stable-24_05"
 packages = ["glibcLocales", "libxcrypt", "pkg-config", "sqlite", "xsimd"]
 
 [workflows]
-runButton = "Setup Database"
+runButton = "Download All NSE Stocks"
 
 [[workflows.workflow]]
 name = "Setup Database"
