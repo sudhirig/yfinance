@@ -1,0 +1,83 @@
+~/workspace$ python data_completeness_checker.py
+================================================================================
+📊 COMPREHENSIVE DATA COMPLETENESS ANALYSIS
+================================================================================
+🕒 Generated: 2025-06-18 08:45:01
+
+📈 OVERALL DATABASE STATISTICS
+--------------------------------------------------
+/home/runner/workspace/data_completeness_checker.py:91: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+  return pd.read_sql(query, self.conn)
+Holders                     0 records    0 companies
+Earnings                  192 records    1 companies
+Company Metrics          1168 records  1168 companies
+Companies                1205 records  1205 companies
+Cash Flow Statements     5686 records  1144 companies
+Income Statements       13184 records  1144 companies
+Corporate Actions       13738 records  933 companies
+Balance Sheets           9978 records  1144 companies
+Price History         1227350 records  1149 companies
+
+🏢 BASIC COMPANY INFORMATION COMPLETENESS
+--------------------------------------------------
+/home/runner/workspace/data_completeness_checker.py:109: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+  df = pd.read_sql(query, self.conn)
+Total Companies      1205
+Long Name            1090/1205 (90.5%)
+Sector               1145/1205 (95.0%)
+Industry             1145/1205 (95.0%)
+Country              1145/1205 (95.0%)
+Exchange             1153/1205 (95.7%)
+Website              1144/1205 (94.9%)
+Employees            172/1205 (14.3%)
+Business Summary     1145/1205 (95.0%)
+
+💹 PRICE HISTORY DATA ANALYSIS
+--------------------------------------------------
+/home/runner/workspace/data_completeness_checker.py:142: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+  return pd.read_sql(query, self.conn)
+Companies with price data: 1149/1205 (95.4%)
+Average price records per company: 1019
+Date range: 1996-01-01 to 2025-06-17
+Companies with dividend data: 722
+Companies with stock split data: 214
+
+📊 FINANCIAL STATEMENTS COMPLETENESS
+--------------------------------------------------
+/home/runner/workspace/data_completeness_checker.py:164: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+  return pd.read_sql(query, self.conn)
+Companies with annual financials: 1144/1205 (94.9%)
+Companies with quarterly financials: 1121/1205 (93.0%)
+Average annual periods per company: 4.6
+Average quarterly periods per company: 6.3
+Traceback (most recent call last):
+  File "/home/runner/workspace/data_completeness_checker.py", line 445, in <module>
+    checker.generate_comprehensive_report()
+  File "/home/runner/workspace/data_completeness_checker.py", line 339, in generate_comprehensive_report
+    latest_annual = financial_stats['latest_annual_report'].max()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/series.py", line 6528, in max
+    return NDFrame.max(self, axis, skipna, numeric_only, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/generic.py", line 12423, in max
+    return self._stat_function(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/generic.py", line 12396, in _stat_function
+    return self._reduce(
+           ^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/series.py", line 6468, in _reduce
+    return op(delegate, skipna=skipna, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/nanops.py", line 147, in f
+    result = alt(values, axis=axis, skipna=skipna, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/nanops.py", line 404, in new_func
+    result = func(values, axis=axis, skipna=skipna, mask=mask, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/pandas/core/nanops.py", line 1098, in reduction
+    result = getattr(values, meth)(axis)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/numpy/_core/_methods.py", line 43, in _amax
+    return umr_maximum(a, axis, None, out, keepdims, initial, where)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: '>=' not supported between instances of 'datetime.date' and 'float'
