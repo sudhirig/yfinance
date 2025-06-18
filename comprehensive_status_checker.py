@@ -305,7 +305,11 @@ class ComprehensiveStatusChecker:
         """Run all checks and generate report"""
         print("🚀 COMPREHENSIVE NSE DATA SYSTEM STATUS CHECK")
         print("=" * 60)
-        print(f"⏰ Report generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        from datetime import datetime
+        import time
+        current_time = datetime.now()
+        print(f"⏰ Report generated: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"⏰ System time (UTC): {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
         
         # 1. Check symbol files
         symbols = self.check_symbol_files()
