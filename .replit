@@ -15,7 +15,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main_data_loader.py"
+args = "python main_data_loader.py --download-nse"
 
 [[workflows.workflow]]
 name = "Download All NSE Stocks"
