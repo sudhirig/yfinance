@@ -308,7 +308,15 @@ class DataCompletenessChecker:
         
         print(f"Companies with price data: {companies_with_data}/{total_companies} ({companies_with_data/total_companies*100:.1f}%)")
         print(f"Average price records per company: {avg_records:.0f}")
-        print(f"Date range: {price_stats['earliest_date'].min()} to {price_stats['latest_date'].max()}")
+        
+        # Handle date range safely
+        earliest_dates = price_stats['earliest_date'].dropna()
+        latest_dates = price_stats['latest_date'].dropna()
+        if not earliest_dates.empty and not latest_dates.empty:
+            print(f"Date range: {earliest_dates.min()} to {latest_dates.max()}")
+        else:
+            print("Date range: No valid dates found")
+            
         print(f"Companies with dividend data: {len(price_stats[price_stats['dividend_days'] > 0])}")
         print(f"Companies with stock split data: {len(price_stats[price_stats['split_days'] > 0])}")
         print()
