@@ -95,7 +95,14 @@ class YFinanceNSEDownloader:
         if pd.isna(value) or value == '' or value == 'N/A' or value is None:
             return None
         try:
-            return float(value)
+            float_val = float(value)
+            # Handle infinite values
+            if float_val == float('inf') or float_val == float('-inf'):
+                return None
+            # Handle very large values that might cause overflow
+            if abs(float_val) > 1e12:
+                return None
+            return float_val
         except (ValueError, TypeError):
             return None
 
@@ -341,14 +348,17 @@ class YFinanceNSEDownloader:
                 self.logger.error(f"❌ Error downloading corporate actions for {symbol}: {e}")
 
             # Log successful download
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO data_updates (company_id, table_name, update_type, records_affected, file_source)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (company_id, 'all_tables', 'yfinance_download', 1, f"yfinance_{symbol}"))
-            cursor.close()
-
-            self.conn.commit()
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("""
+                    INSERT INTO data_updates (company_id, table_name, update_type, records_affected, file_source)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (company_id, 'all_tables', 'yfinance_download', 1, f"yfinance_{symbol}"))
+                cursor.close()
+                self.conn.commit()
+            except Exception as e:
+                self.logger.error(f"Error logging download for {symbol}: {e}")
+                self.conn.rollback()
 
             # Summary log
             status_summary = []
@@ -364,7 +374,16 @@ class YFinanceNSEDownloader:
 
         except Exception as e:
             self.logger.error(f"💥 Fatal error processing {symbol}: {e}")
-            self.conn.rollback()
+            try:
+                self.conn.rollback()
+            except Exception as rollback_error:
+                self.logger.error(f"Error during rollback for {symbol}: {rollback_error}")
+                # Try to reconnect if connection is broken
+                try:
+                    self.close_db()
+                    self.connect_db()
+                except Exception as reconnect_error:
+                    self.logger.error(f"Failed to reconnect database: {reconnect_error}")
             return False
 
     def store_company_metrics(self, company_id: int, info: Dict):
