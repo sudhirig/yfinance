@@ -206,9 +206,65 @@ class YFinanceNSEDownloader:
         cursor.close()
         return company_id
 
+    def is_company_data_complete(self, symbol: str) -> bool:
+        """Check if company already has complete data"""
+        cursor = self.conn.cursor()
+        try:
+            # Check if company exists and has recent data
+            cursor.execute("""
+                SELECT c.id, 
+                       COUNT(DISTINCT ph.date) as price_days,
+                       COUNT(DISTINCT is_annual.period_ending) as annual_financials,
+                       COUNT(DISTINCT cm.id) as metrics_count,
+                       MAX(ph.date) as latest_price_date
+                FROM companies c
+                LEFT JOIN price_history ph ON c.id = ph.company_id
+                LEFT JOIN income_statements is_annual ON c.id = is_annual.company_id AND is_annual.period_type = 'annual'
+                LEFT JOIN company_metrics cm ON c.id = cm.company_id
+                WHERE c.symbol = %s
+                GROUP BY c.id
+            """, (symbol,))
+            
+            result = cursor.fetchone()
+            if not result:
+                return False
+                
+            company_id, price_days, annual_financials, metrics_count, latest_price_date = result
+            
+            # Consider complete if:
+            # - Has price history (>= 100 days)
+            # - Has financial statements (>= 2 annual periods)
+            # - Has company metrics
+            # - Latest price is within last 7 days
+            from datetime import datetime, timedelta
+            recent_threshold = datetime.now().date() - timedelta(days=7)
+            
+            is_complete = (
+                price_days >= 100 and 
+                annual_financials >= 2 and 
+                metrics_count > 0 and
+                latest_price_date and latest_price_date >= recent_threshold
+            )
+            
+            if is_complete:
+                self.logger.info(f"⏭️ Skipping {symbol} - already has complete data")
+                return True
+                
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error checking completeness for {symbol}: {e}")
+            return False
+        finally:
+            cursor.close()
+
     def download_and_store_company_data(self, symbol: str) -> bool:
         """Download and store all data for a single company"""
         try:
+            # Skip if already complete
+            if self.is_company_data_complete(symbol):
+                return True
+                
             self.logger.info(f"📈 Starting download for {symbol}")
             ticker = yf.Ticker(symbol)
 
@@ -778,7 +834,47 @@ class YFinanceNSEDownloader:
         except Exception as e:
             self.logger.warning(f"Error downloading corporate actions for {symbol}: {e}")
 
-    def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt"):
+    def get_missing_companies(self, all_symbols: List[str]) -> List[str]:
+        """Get list of companies that need to be downloaded or updated"""
+        cursor = self.conn.cursor()
+        try:
+            # Get symbols that are either missing or incomplete
+            cursor.execute("""
+                SELECT DISTINCT symbol FROM (
+                    -- Companies not in database
+                    SELECT unnest(%s::text[]) as symbol
+                    EXCEPT
+                    SELECT symbol FROM companies
+                    
+                    UNION
+                    
+                    -- Companies with incomplete data
+                    SELECT c.symbol
+                    FROM companies c
+                    LEFT JOIN price_history ph ON c.id = ph.company_id
+                    LEFT JOIN income_statements is_annual ON c.id = is_annual.company_id AND is_annual.period_type = 'annual'
+                    LEFT JOIN company_metrics cm ON c.id = cm.company_id
+                    WHERE c.symbol = ANY(%s::text[])
+                    GROUP BY c.id, c.symbol
+                    HAVING COUNT(DISTINCT ph.date) < 100 
+                        OR COUNT(DISTINCT is_annual.period_ending) < 2
+                        OR COUNT(DISTINCT cm.id) = 0
+                        OR MAX(ph.date) < NOW()::date - INTERVAL '7 days'
+                ) missing_or_incomplete
+                ORDER BY symbol
+            """, (all_symbols, all_symbols))
+            
+            missing_symbols = [row[0] for row in cursor.fetchall()]
+            self.logger.info(f"🎯 Found {len(missing_symbols)} companies needing download out of {len(all_symbols)} total")
+            return missing_symbols
+            
+        except Exception as e:
+            self.logger.error(f"Error getting missing companies: {e}")
+            return all_symbols  # Fallback to all symbols
+        finally:
+            cursor.close()
+
+    def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt", force_update: bool = False):
         """Download data for all NSE stocks"""
         try:
             self.connect_db()
@@ -791,25 +887,63 @@ class YFinanceNSEDownloader:
             # Get symbols
             if os.path.exists(symbols_file):
                 with open(symbols_file, 'r') as f:
-                    symbols = [line.strip() for line in f.readlines() if line.strip()]
-                self.logger.info(f"Loaded {len(symbols)} symbols from existing file")
+                    all_symbols = [line.strip() for line in f.readlines() if line.strip()]
+                self.logger.info(f"Loaded {len(all_symbols)} symbols from existing file")
             else:
                 self.logger.info("Getting ALL NSE symbols (complete universe)...")
                 fetcher = NSESymbolsFetcher()
-                symbols = fetcher.get_all_nse_symbols(complete_universe=True)
-                fetcher.save_symbols_to_file(symbols, symbols_file)
-                self.logger.info(f"Generated new symbols file with {len(symbols)} NSE stocks")
+                all_symbols = fetcher.get_all_nse_symbols(complete_universe=True)
+                fetcher.save_symbols_to_file(all_symbols, symbols_file)
+                self.logger.info(f"Generated new symbols file with {len(all_symbols)} NSE stocks")
 
-            self.logger.info(f"🚀 Starting download for {len(symbols)} NSE stocks")
+            # Get symbols to process
+            if force_update:
+                symbols = all_symbols
+                self.logger.info("🔄 Force update mode - processing all symbols")
+            else:
+                symbols = self.get_missing_companies(all_symbols)
+            
+            if not symbols:
+                self.logger.info("✅ All companies already have complete data!")
+                return True
+
+            # Prioritize completely new companies first
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT symbol FROM companies WHERE symbol = ANY(%s)", (symbols,))
+            existing_symbols = {row[0] for row in cursor.fetchall()}
+            cursor.close()
+            
+            new_symbols = [s for s in symbols if s not in existing_symbols]
+            update_symbols = [s for s in symbols if s in existing_symbols]
+            
+            # Process new companies first, then updates
+            prioritized_symbols = new_symbols + update_symbols
+            
+            self.logger.info(f"🚀 Starting download for {len(prioritized_symbols)} NSE stocks")
+            self.logger.info(f"   📊 New companies: {len(new_symbols)}")
+            self.logger.info(f"   🔄 Updates needed: {len(update_symbols)}")
             self.logger.info(f"📊 Processing in batches of {self.batch_size} stocks")
-            self.logger.info(f"⏱️ Estimated completion time: {(len(symbols) * self.delay_between_stocks + (len(symbols)//self.batch_size) * self.delay_between_batches) / 60:.1f} minutes")
+            self.logger.info(f"⏱️ Estimated completion time: {(len(prioritized_symbols) * self.delay_between_stocks + (len(prioritized_symbols)//self.batch_size) * self.delay_between_batches) / 60:.1f} minutes")
+            
+            symbols = prioritized_symbols
+
+            # Check for resume file
+            resume_file = "download_progress.txt"
+            start_index = 0
+            if os.path.exists(resume_file):
+                try:
+                    with open(resume_file, 'r') as f:
+                        start_index = int(f.read().strip())
+                    self.logger.info(f"📂 Resuming from symbol index {start_index}")
+                except:
+                    start_index = 0
 
             # Process stocks in batches
             successful_downloads = 0
             failed_downloads = 0
             total_batches = (len(symbols) + self.batch_size - 1) // self.batch_size
 
-            for i in range(0, len(symbols), self.batch_size):
+            for i in range(start_index, len(symbols), self.batch_size):
                 batch = symbols[i:i + self.batch_size]
                 batch_num = i//self.batch_size + 1
 
@@ -833,6 +967,10 @@ class YFinanceNSEDownloader:
                         self.logger.error(f"❌ Error processing {symbol}: {e}")
                         failed_downloads += 1
                         continue
+
+                # Save progress
+                with open("download_progress.txt", 'w') as f:
+                    f.write(str(i + self.batch_size))
 
                 batch_time = time.time() - batch_start_time
                 self.logger.info(f"✅ Batch {batch_num} completed: {batch_successful}/{len(batch)} successful in {batch_time:.1f}s")
