@@ -1,0 +1,75 @@
+ Environment updated. Reloading shell...
+2025-06-19 00:52:47,618 - INFO - === YFinance Data Loader Started ===
+2025-06-19 00:52:47,619 - INFO - Step 1: Checking database connection...
+2025-06-19 00:52:49,243 - INFO - ✓ Connected to database using DATABASE_URL
+2025-06-19 00:52:49,698 - INFO - Database version: PostgreSQL 16.9 on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+2025-06-19 00:52:49,699 - INFO - Step 2: Creating database schema...
+2025-06-19 00:52:51,018 - INFO - Executing schema from enhanced_yfinance_schema.sql
+2025-06-19 00:52:51,795 - INFO - ✓ Database schema already exists, continuing...
+2025-06-19 00:52:51,796 - INFO - Step 3: Downloading NEW NSE stocks from yfinance (skipping existing)...
+2025-06-19 00:52:52,737 - INFO - Starting NSE stocks download (skipping existing companies)...
+2025-06-19 00:52:54,194 - INFO - Database connection established
+2025-06-19 00:52:54,195 - INFO - Executing schema from enhanced_yfinance_schema.sql
+2025-06-19 00:52:54,924 - INFO - ✓ Database schema already exists, continuing...
+2025-06-19 00:52:55,151 - INFO - Loaded 2213 symbols from existing file
+2025-06-19 00:52:55,854 - INFO - 📊 Found 1235 companies already in database
+2025-06-19 00:52:55,854 - INFO - 🆕 978 new companies to download
+2025-06-19 00:52:55,854 - INFO - 🚀 Starting download for 978 NSE stocks
+2025-06-19 00:52:55,854 - INFO - 📊 Processing in batches of 50 stocks
+2025-06-19 00:52:55,854 - INFO - ⏱️ Estimated completion time: 5.5 minutes
+2025-06-19 00:52:55,855 - INFO - 📦 Processing batch 1/20 (50 stocks): Progress 0/978
+2025-06-19 00:52:55,855 - INFO -   📈 [1.1] Processing 3MINDIA.NS
+2025-06-19 00:52:55,855 - INFO - 📈 Starting download for 3MINDIA.NS
+2025-06-19 00:52:58,551 - INFO - Created new company 3MINDIA.NS with ID: 1595
+2025-06-19 00:52:58,775 - ERROR - Error storing company metrics for 3MINDIA.NS: numeric field overflow
+DETAIL:  A field with precision 8, scale 6 must round to an absolute value less than 10^2.
+
+2025-06-19 00:52:59,709 - ERROR - ❌ Error downloading history for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:52:59,709 - INFO - 📊 Downloading financial statements for 3MINDIA.NS
+2025-06-19 00:53:01,246 - ERROR - Error storing annual income statements for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:01,468 - ERROR - Error storing annual balance sheets for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:01,691 - ERROR - Error storing annual cash flow statements for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:01,691 - INFO - ✓ Annual financials downloaded for 3MINDIA.NS
+2025-06-19 00:53:03,132 - ERROR - Error storing quarterly income statements for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:03,355 - ERROR - Error storing quarterly balance sheets for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:03,355 - WARNING - No quarterly cash flow data for 3MINDIA.NS
+2025-06-19 00:53:03,355 - INFO - ✓ Quarterly financials downloaded for 3MINDIA.NS
+2025-06-19 00:53:04,744 - WARNING - Error downloading corporate actions for 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:04,967 - ERROR - 💥 Fatal error processing 3MINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:05,490 - INFO -   📈 [1.2] Processing </p></a></div></div></div></div></div></div></li></ul></div></nav></div></div></div></header><div id="midBody" class="mid-body-indi"><div class="marquee marquee_section"><div class="marquee-content"><a class="marquee-tag border-left-red d-flex flex-row" href="/get-quotes/equity?symbol=ADANIENT"><div class="marquee_left_text float-start">ADANIENT</div><div class="marquee_center_text ps-3 float-start">2.NS
+2025-06-19 00:53:05,490 - INFO - 📈 Starting download for </p></a></div></div></div></div></div></div></li></ul></div></nav></div></div></div></header><div id="midBody" class="mid-body-indi"><div class="marquee marquee_section"><div class="marquee-content"><a class="marquee-tag border-left-red d-flex flex-row" href="/get-quotes/equity?symbol=ADANIENT"><div class="marquee_left_text float-start">ADANIENT</div><div class="marquee_center_text ps-3 float-start">2.NS
+2025-06-19 00:53:06,410 - ERROR - HTTP Error 500: 
+2025-06-19 00:53:06,745 - ERROR - Error getting info for </p></a></div></div></div></div></div></div></li></ul></div></nav></div></div></div></header><div id="midBody" class="mid-body-indi"><div class="marquee marquee_section"><div class="marquee-content"><a class="marquee-tag border-left-red d-flex flex-row" href="/get-quotes/equity?symbol=ADANIENT"><div class="marquee_left_text float-start">ADANIENT</div><div class="marquee_center_text ps-3 float-start">2.NS: Failed to parse json response from Yahoo Finance: {'code': 'Not Found', 'description': 'HTTP 404 Not Found'}
+2025-06-19 00:53:07,413 - ERROR - 💥 Fatal error processing </p></a></div></div></div></div></div></div></li></ul></div></nav></div></div></div></header><div id="midBody" class="mid-body-indi"><div class="marquee marquee_section"><div class="marquee-content"><a class="marquee-tag border-left-red d-flex flex-row" href="/get-quotes/equity?symbol=ADANIENT"><div class="marquee_left_text float-start">ADANIENT</div><div class="marquee_center_text ps-3 float-start">2.NS: value too long for type character varying(20)
+
+2025-06-19 00:53:07,936 - INFO -   📈 [1.3] Processing <script>!function(a){var e="https://s.go-mpulse.net/boomerang/.NS
+2025-06-19 00:53:07,936 - INFO - 📈 Starting download for <script>!function(a){var e="https://s.go-mpulse.net/boomerang/.NS
+2025-06-19 00:53:08,875 - ERROR - HTTP Error 500: 
+2025-06-19 00:53:09,262 - ERROR - Error getting info for <script>!function(a){var e="https://s.go-mpulse.net/boomerang/.NS: Failed to parse json response from Yahoo Finance: {'code': 'Not Found', 'description': 'HTTP 404 Not Found'}
+2025-06-19 00:53:09,930 - ERROR - 💥 Fatal error processing <script>!function(a){var e="https://s.go-mpulse.net/boomerang/.NS: value too long for type character varying(20)
+
+2025-06-19 00:53:10,452 - INFO -   📈 [1.4] Processing <script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar.NS
+2025-06-19 00:53:10,452 - INFO - 📈 Starting download for <script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar.NS
+2025-06-19 00:53:11,551 - ERROR - HTTP Error 404: 
+2025-06-19 00:53:11,735 - WARNING - ⚠️ No info data for <script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar.NS
+2025-06-19 00:53:12,403 - ERROR - Error getting info for <script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar.NS: value too long for type character varying(20)
+
+2025-06-19 00:53:12,625 - ERROR - 💥 Fatal error processing <script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:13,148 - INFO -   📈 [1.5] Processing ABBOTINDIA.NS
+2025-06-19 00:53:13,148 - INFO - 📈 Starting download for ABBOTINDIA.NS
+2025-06-19 00:53:14,296 - INFO - Created new company ABBOTINDIA.NS with ID: 1596
+2025-06-19 00:53:14,520 - ERROR - Error storing company metrics for ABBOTINDIA.NS: numeric field overflow
+DETAIL:  A field with precision 8, scale 6 must round to an absolute value less than 10^2.
+
+2025-06-19 00:53:15,337 - ERROR - ❌ Error downloading history for ABBOTINDIA.NS: current transaction is aborted, commands ignored until end of transaction block
+
+2025-06-19 00:53:15,337 - INFO - 📊 Downloading financial statements for A
