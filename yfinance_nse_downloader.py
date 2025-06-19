@@ -209,27 +209,38 @@ class YFinanceNSEDownloader:
     def download_and_store_company_data(self, symbol: str) -> bool:
         """Download and store all data for a single company"""
         try:
+            # Validate symbol before processing
+            if not self.validate_symbol(symbol):
+                self.logger.error(f"❌ Invalid symbol format: {symbol}")
+                return False
+                
             self.logger.info(f"📈 Starting download for {symbol}")
             ticker = yf.Ticker(symbol)
 
-            # Get company info
+            # Start a new transaction for this company
+            cursor = self.conn.cursor()
+            cursor.execute("BEGIN;")
+            
             try:
-                info = ticker.info
-                if not info or len(info) < 5:
-                    self.logger.warning(f"⚠️ No info data for {symbol}")
-                    company_id = self.get_or_create_company(symbol)
-                else:
-                    company_id = self.get_or_create_company(symbol, info)
-                    # Store company metrics
-                    try:
-                        self.store_company_metrics(company_id, info)
-                        self.logger.info(f"✓ Stored company metrics for {symbol}")
-                    except Exception as e:
-                        self.logger.error(f"Error storing company metrics for {symbol}: {e}")
+                # Get company info
+                try:
+                    info = ticker.info
+                    if not info or len(info) < 5:
+                        self.logger.warning(f"⚠️ No info data for {symbol}")
+                        company_id = self.get_or_create_company(symbol)
+                    else:
+                        company_id = self.get_or_create_company(symbol, info)
+                        # Store company metrics
+                        try:
+                            self.store_company_metrics(company_id, info)
+                            self.logger.info(f"✓ Stored company metrics for {symbol}")
+                        except Exception as e:
+                            self.logger.error(f"Error storing company metrics for {symbol}: {e}")
+                            # Continue with other data even if metrics fail
 
-            except Exception as e:
-                self.logger.error(f"Error getting info for {symbol}: {e}")
-                company_id = self.get_or_create_company(symbol)
+                except Exception as e:
+                    self.logger.error(f"Error getting info for {symbol}: {e}")
+                    company_id = self.get_or_create_company(symbol)
 
             # Download historical data (5 years)
             price_success = False
@@ -285,30 +296,41 @@ class YFinanceNSEDownloader:
                 self.logger.error(f"❌ Error downloading corporate actions for {symbol}: {e}")
 
             # Log successful download
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO data_updates (company_id, table_name, update_type, records_affected, file_source)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (company_id, 'all_tables', 'yfinance_download', 1, f"yfinance_{symbol}"))
-            cursor.close()
+                cursor.execute("""
+                    INSERT INTO data_updates (company_id, table_name, update_type, records_affected, file_source)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (company_id, 'all_tables', 'yfinance_download', 1, f"yfinance_{symbol}"))
 
-            self.conn.commit()
+                # Commit the transaction
+                cursor.execute("COMMIT;")
+                cursor.close()
 
-            # Summary log
-            status_summary = []
-            if price_success:
-                status_summary.append("Price✓")
-            if financials_success:
-                status_summary.append("Financials✓")
-            if actions_success:
-                status_summary.append("Actions✓")
+                # Summary log
+                status_summary = []
+                if price_success:
+                    status_summary.append("Price✓")
+                if financials_success:
+                    status_summary.append("Financials✓")
+                if actions_success:
+                    status_summary.append("Actions✓")
 
-            self.logger.info(f"🎯 {symbol} complete: {', '.join(status_summary) if status_summary else 'Basic info only'}")
-            return True
+                self.logger.info(f"🎯 {symbol} complete: {', '.join(status_summary) if status_summary else 'Basic info only'}")
+                return True
+
+            except Exception as inner_e:
+                # Rollback transaction for this company
+                cursor.execute("ROLLBACK;")
+                cursor.close()
+                self.logger.error(f"💥 Transaction error for {symbol}: {inner_e}")
+                return False
 
         except Exception as e:
             self.logger.error(f"💥 Fatal error processing {symbol}: {e}")
-            self.conn.rollback()
+            # Ensure we're in a clean state for next symbol
+            try:
+                self.conn.rollback()
+            except:
+                pass
             return False
 
     def store_company_metrics(self, company_id: int, info: Dict):
@@ -799,6 +821,56 @@ class YFinanceNSEDownloader:
         cursor.close()
         return recent_symbols
 
+    def validate_symbol(self, symbol: str) -> bool:
+        """Validate if symbol is a proper NSE stock symbol"""
+        if not symbol or len(symbol) < 3:
+            return False
+        
+        # Remove .NS suffix for validation
+        base_symbol = symbol.replace('.NS', '')
+        
+        # Check for invalid characters (HTML/JavaScript fragments)
+        invalid_chars = ['<', '>', '"', "'", '(', ')', '{', '}', '[', ']', '=', '!', '/']
+        if any(char in base_symbol for char in invalid_chars):
+            return False
+        
+        # Check length (NSE symbols are typically 1-20 characters)
+        if len(base_symbol) > 20:
+            return False
+        
+        # Check if it contains only valid characters (letters, numbers, some special chars)
+        import re
+        if not re.match(r'^[A-Z0-9&\-\.]+$', base_symbol):
+            return False
+        
+        return True
+    
+    def clean_symbols_list(self, symbols: List[str]) -> List[str]:
+        """Clean and validate symbols list"""
+        cleaned_symbols = []
+        invalid_count = 0
+        
+        for symbol in symbols:
+            symbol = symbol.strip()
+            
+            # Skip empty lines
+            if not symbol:
+                continue
+                
+            # Ensure .NS suffix
+            if not symbol.endswith('.NS'):
+                symbol = f"{symbol}.NS"
+            
+            # Validate symbol
+            if self.validate_symbol(symbol):
+                cleaned_symbols.append(symbol)
+            else:
+                invalid_count += 1
+                self.logger.warning(f"Skipping invalid symbol: {symbol}")
+        
+        self.logger.info(f"Cleaned symbols: {len(cleaned_symbols)} valid, {invalid_count} invalid/skipped")
+        return cleaned_symbols
+
     def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt", skip_existing: bool = True):
         """Download data for all NSE stocks, optionally skipping existing ones"""
         try:
@@ -812,14 +884,24 @@ class YFinanceNSEDownloader:
             # Get symbols
             if os.path.exists(symbols_file):
                 with open(symbols_file, 'r') as f:
-                    all_symbols = [line.strip() for line in f.readlines() if line.strip()]
-                self.logger.info(f"Loaded {len(all_symbols)} symbols from existing file")
+                    raw_symbols = [line.strip() for line in f.readlines() if line.strip()]
+                self.logger.info(f"Loaded {len(raw_symbols)} raw symbols from existing file")
+                
+                # Clean and validate symbols
+                all_symbols = self.clean_symbols_list(raw_symbols)
+                self.logger.info(f"After cleaning: {len(all_symbols)} valid symbols")
             else:
                 self.logger.info("Getting ALL NSE symbols (complete universe)...")
                 fetcher = NSESymbolsFetcher()
-                all_symbols = fetcher.get_all_nse_symbols(complete_universe=True)
-                fetcher.save_symbols_to_file(all_symbols, symbols_file)
-                self.logger.info(f"Generated new symbols file with {len(all_symbols)} NSE stocks")
+                raw_symbols = fetcher.get_all_nse_symbols(complete_universe=True)
+                all_symbols = self.clean_symbols_list(raw_symbols)
+                
+                # Save cleaned symbols
+                with open(symbols_file, 'w') as f:
+                    for symbol in all_symbols:
+                        f.write(f"{symbol}\n")
+                
+                self.logger.info(f"Generated clean symbols file with {len(all_symbols)} valid NSE stocks")
 
             # Filter out existing companies if skip_existing is True
             if skip_existing:

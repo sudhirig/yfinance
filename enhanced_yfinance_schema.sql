@@ -1,4 +1,3 @@
-
 -- Enhanced Database Schema for YFinance Data Storage
 -- This schema supports all data types from yfinance downloads including CSV structures
 
@@ -99,11 +98,11 @@ CREATE TABLE company_metrics (
     fifty_two_week_high DECIMAL(15,6),
     fifty_day_average DECIMAL(15,6),
     two_hundred_day_average DECIMAL(15,6),
-    trailing_pe DECIMAL(10,4),
-    forward_pe DECIMAL(10,4),
-    price_to_book DECIMAL(10,4),
-    dividend_yield DECIMAL(8,6),
-    dividend_rate DECIMAL(8,6),
+    trailing_pe NUMERIC(12, 6),
+    forward_pe NUMERIC(12, 6),
+    price_to_book NUMERIC(12, 6),
+    dividend_yield NUMERIC(10, 8),
+    dividend_rate NUMERIC(12, 2),
     ex_dividend_date DATE,
     payout_ratio DECIMAL(8,6),
     five_year_avg_dividend_yield DECIMAL(8,6),
