@@ -778,8 +778,29 @@ class YFinanceNSEDownloader:
         except Exception as e:
             self.logger.warning(f"Error downloading corporate actions for {symbol}: {e}")
 
-    def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt"):
-        """Download data for all NSE stocks"""
+    def get_existing_companies(self):
+        """Get list of companies already in database"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT symbol FROM companies")
+        existing_symbols = {row[0] for row in cursor.fetchall()}
+        cursor.close()
+        return existing_symbols
+
+    def get_companies_with_recent_data(self, days=30):
+        """Get companies that have recent price data (within specified days)"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT c.symbol 
+            FROM companies c 
+            JOIN price_history ph ON c.id = ph.company_id 
+            WHERE ph.date >= CURRENT_DATE - INTERVAL '%s days'
+        """, (days,))
+        recent_symbols = {row[0] for row in cursor.fetchall()}
+        cursor.close()
+        return recent_symbols
+
+    def download_all_nse_stocks(self, symbols_file: str = "nse_complete_universe.txt", skip_existing: bool = True):
+        """Download data for all NSE stocks, optionally skipping existing ones"""
         try:
             self.connect_db()
 
@@ -791,14 +812,46 @@ class YFinanceNSEDownloader:
             # Get symbols
             if os.path.exists(symbols_file):
                 with open(symbols_file, 'r') as f:
-                    symbols = [line.strip() for line in f.readlines() if line.strip()]
-                self.logger.info(f"Loaded {len(symbols)} symbols from existing file")
+                    all_symbols = [line.strip() for line in f.readlines() if line.strip()]
+                self.logger.info(f"Loaded {len(all_symbols)} symbols from existing file")
             else:
                 self.logger.info("Getting ALL NSE symbols (complete universe)...")
                 fetcher = NSESymbolsFetcher()
-                symbols = fetcher.get_all_nse_symbols(complete_universe=True)
-                fetcher.save_symbols_to_file(symbols, symbols_file)
-                self.logger.info(f"Generated new symbols file with {len(symbols)} NSE stocks")
+                all_symbols = fetcher.get_all_nse_symbols(complete_universe=True)
+                fetcher.save_symbols_to_file(all_symbols, symbols_file)
+                self.logger.info(f"Generated new symbols file with {len(all_symbols)} NSE stocks")
+
+            # Filter out existing companies if skip_existing is True
+            if skip_existing:
+                existing_companies = self.get_existing_companies()
+                symbols_to_download = [symbol for symbol in all_symbols if symbol not in existing_companies]
+                
+                self.logger.info(f"📊 Found {len(existing_companies)} companies already in database")
+                self.logger.info(f"🆕 {len(symbols_to_download)} new companies to download")
+                
+                if len(symbols_to_download) == 0:
+                    self.logger.info("✅ All companies already exist in database!")
+                    
+                    # Check for companies that need data updates (old price data)
+                    companies_with_recent_data = self.get_companies_with_recent_data(30)
+                    stale_companies = existing_companies - companies_with_recent_data
+                    
+                    if stale_companies:
+                        self.logger.info(f"🔄 Found {len(stale_companies)} companies with stale data (>30 days old)")
+                        symbols_to_download = list(stale_companies)[:100]  # Limit to 100 for update
+                        self.logger.info(f"🔄 Will update {len(symbols_to_download)} companies with stale data")
+                    else:
+                        self.logger.info("✅ All companies have recent data. Nothing to download.")
+                        return True
+                
+                symbols = symbols_to_download
+            else:
+                symbols = all_symbols
+                self.logger.info("⚠️ Skip existing disabled - will download ALL symbols (may overwrite existing data)")
+
+            if not symbols:
+                self.logger.info("No symbols to download.")
+                return True
 
             self.logger.info(f"🚀 Starting download for {len(symbols)} NSE stocks")
             self.logger.info(f"📊 Processing in batches of {self.batch_size} stocks")
@@ -872,5 +925,20 @@ class YFinanceNSEDownloader:
             self.close_db()
 
 if __name__ == "__main__":
+    import sys
+    
+    # Check for command line arguments
+    skip_existing = True  # Default to skip existing
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--force-all":
+            skip_existing = False
+            print("⚠️ FORCE MODE: Will download ALL symbols (may overwrite existing data)")
+        elif sys.argv[1] == "--help":
+            print("Usage:")
+            print("  python yfinance_nse_downloader.py                # Skip existing companies (default)")
+            print("  python yfinance_nse_downloader.py --force-all    # Download all symbols (overwrite existing)")
+            print("  python yfinance_nse_downloader.py --help         # Show this help")
+            sys.exit(0)
+    
     downloader = YFinanceNSEDownloader()
-    downloader.download_all_nse_stocks()
+    downloader.download_all_nse_stocks(skip_existing=skip_existing)

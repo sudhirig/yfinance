@@ -194,7 +194,7 @@ def verify_data_load():
         logger.error(f"✗ Data verification failed: {e}")
         return False
 
-def download_all_nse_stocks():
+def download_all_nse_stocks(skip_existing=True):
     """Download all NSE stocks directly from yfinance"""
     logger = logging.getLogger(__name__)
     
@@ -202,8 +202,12 @@ def download_all_nse_stocks():
         from yfinance_nse_downloader import YFinanceNSEDownloader
         downloader = YFinanceNSEDownloader()
         
-        logger.info("Starting NSE stocks download...")
-        success = downloader.download_all_nse_stocks()
+        if skip_existing:
+            logger.info("Starting NSE stocks download (skipping existing companies)...")
+        else:
+            logger.info("Starting NSE stocks download (downloading ALL companies - may overwrite)...")
+            
+        success = downloader.download_all_nse_stocks(skip_existing=skip_existing)
         
         if success:
             logger.info("✓ NSE stocks download completed successfully")
@@ -224,16 +228,22 @@ def main():
     # Check for command line arguments
     import sys
     mode = "csv"  # default mode
+    skip_existing = True  # default to skip existing
+    
     if len(sys.argv) > 1:
         if sys.argv[1] == "--download-nse":
             mode = "download"
+        elif sys.argv[1] == "--download-nse-force":
+            mode = "download"
+            skip_existing = False
         elif sys.argv[1] == "--csv":
             mode = "csv"
         elif sys.argv[1] == "--help":
             print("Usage:")
-            print("  python main_data_loader.py --csv          # Load from CSV files (default)")
-            print("  python main_data_loader.py --download-nse # Download all NSE stocks from yfinance")
-            print("  python main_data_loader.py --help         # Show this help")
+            print("  python main_data_loader.py --csv                 # Load from CSV files (default)")
+            print("  python main_data_loader.py --download-nse        # Download NEW NSE stocks only (skip existing)")
+            print("  python main_data_loader.py --download-nse-force  # Download ALL NSE stocks (overwrite existing)")
+            print("  python main_data_loader.py --help                # Show this help")
             return True
     
     # Step 1: Check database connection
@@ -249,9 +259,13 @@ def main():
         return False
     
     if mode == "download":
-        # Download mode: Download all NSE stocks
-        logger.info("Step 3: Downloading all NSE stocks from yfinance...")
-        if not download_all_nse_stocks():
+        # Download mode: Download NSE stocks
+        if skip_existing:
+            logger.info("Step 3: Downloading NEW NSE stocks from yfinance (skipping existing)...")
+        else:
+            logger.info("Step 3: Downloading ALL NSE stocks from yfinance (force mode)...")
+        
+        if not download_all_nse_stocks(skip_existing=skip_existing):
             logger.error("NSE stocks download failed.")
             return False
     else:

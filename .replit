@@ -26,5 +26,18 @@ mode = "sequential"
 task = "shell.exec"
 args = "python yfinance_nse_downloader.py"
 
+[[workflows.workflow]]
+name = "Download Missing Companies Only"
+author = 38404436
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python check_missing_companies.py"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main_data_loader.py --download-nse"
+
 [deployment]
 run = ["sh", "-c", "npm run dev"]
