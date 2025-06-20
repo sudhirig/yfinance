@@ -96,11 +96,11 @@ def admin_share():
     try:
         import subprocess
         import os
-        
+
         # Run the export script
         result = subprocess.run(['python', 'export_database.py'], 
                               capture_output=True, text=True, timeout=300)
-        
+
         if result.returncode == 0:
             # Look for generated SQL file
             sql_files = [f for f in os.listdir('.') if f.startswith('yfinance_export_') and f.endswith('.sql')]
@@ -115,7 +115,7 @@ def admin_share():
                 return jsonify({'success': False, 'message': 'Export completed but no file found'})
         else:
             return jsonify({'success': False, 'message': f'Export failed: {result.stderr}'})
-            
+
     except Exception as e:
         return jsonify({'success': False, 'message': f'Export error: {str(e)}'})
 
@@ -126,15 +126,15 @@ def admin_export():
         import subprocess
         import os
         from datetime import datetime
-        
+
         # Run selective export
         result = subprocess.run(['python', 'selective_export.py'], 
                               capture_output=True, text=True, timeout=300)
-        
+
         if result.returncode == 0:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             export_file = f'yfinance_selective_export_{timestamp}.sql'
-            
+
             return jsonify({
                 'success': True, 
                 'message': f'Selective export completed: {export_file}',
@@ -142,7 +142,7 @@ def admin_export():
             })
         else:
             return jsonify({'success': False, 'message': f'Export failed: {result.stderr}'})
-            
+
     except Exception as e:
         return jsonify({'success': False, 'message': f'Export error: {str(e)}'})
 
@@ -152,10 +152,10 @@ def admin_logs():
     try:
         import os
         logs = []
-        
+
         # Check for log files
         log_files = ['yfinance_loader.log', 'yfinance_nse_downloader.log']
-        
+
         for log_file in log_files:
             if os.path.exists(log_file):
                 try:
@@ -180,9 +180,9 @@ def admin_logs():
                     'content': 'Log file not found',
                     'size': 0
                 })
-        
+
         return jsonify({'success': True, 'logs': logs})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error reading logs: {str(e)}'})
 
@@ -192,12 +192,12 @@ def admin_stats():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Get table counts
         stats = {}
         tables = ['companies', 'price_history', 'company_metrics', 
                  'income_statements', 'balance_sheets', 'cash_flow_statements']
-        
+
         for table in tables:
             try:
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
@@ -205,7 +205,7 @@ def admin_stats():
                 stats[table] = count
             except Exception as e:
                 stats[table] = f"Error: {str(e)}"
-        
+
         # Get latest update info
         try:
             cursor.execute("""
@@ -218,10 +218,10 @@ def admin_stats():
         except Exception as e:
             stats['latest_price_date'] = f"Error: {str(e)}"
             stats['companies_with_price_data'] = 0
-        
+
         conn.close()
         return jsonify({'success': True, 'stats': stats})
-        
+
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error getting stats: {str(e)}'})
 
@@ -230,18 +230,18 @@ def admin_download():
     """Start background download process"""
     try:
         import subprocess
-        
+
         # Start the NSE downloader in background
         process = subprocess.Popen(['python', 'yfinance_nse_downloader.py'], 
                                  stdout=subprocess.PIPE, 
                                  stderr=subprocess.PIPE)
-        
+
         return jsonify({
             'success': True, 
             'message': f'Download process started with PID: {process.pid}',
             'pid': process.pid
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to start download: {str(e)}'})
 
