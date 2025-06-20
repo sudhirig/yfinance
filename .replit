@@ -6,7 +6,7 @@ channel = "stable-24_05"
 packages = ["glibcLocales", "libxcrypt", "pkg-config", "sqlite", "xsimd"]
 
 [workflows]
-runButton = "Setup Database"
+runButton = "Start YFinance App"
 
 [[workflows.workflow]]
 name = "Setup Database"
@@ -38,6 +38,15 @@ args = "python check_missing_companies.py"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main_data_loader.py --download-nse"
+
+[[workflows.workflow]]
+name = "Start YFinance App"
+author = 38404436
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app.py"
 
 [deployment]
 run = ["sh", "-c", "npm run dev"]
