@@ -15,3 +15,5 @@ protobuf>=3.19.0
 websockets>=13.0
 yfinance
 psycopg2-binary
+yfinance
+yfinance
