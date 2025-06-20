@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, jsonify, request
 import psycopg2
 from database_config import get_db_connection
@@ -17,27 +16,26 @@ def get_stocks():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT c.symbol, c.long_name, c.sector, cm.market_cap 
-        FROM companies c
-        LEFT JOIN company_metrics cm ON c.id = cm.company_id
-        ORDER BY cm.market_cap DESC NULLS LAST 
+        SELECT symbol, long_name, sector, industry
+        FROM companies 
+        ORDER BY symbol 
         LIMIT 50
     """)
     stocks = cursor.fetchall()
     conn.close()
-    
+
     return jsonify([{
         'symbol': stock[0],
         'name': stock[1],
         'sector': stock[2],
-        'market_cap': stock[3]
+        'industry': stock[3]
     } for stock in stocks])
 
 @app.route('/api/stock/<symbol>')
 def get_stock_data(symbol):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Get latest price data
     cursor.execute("""
         SELECT date, open_price, high_price, low_price, close_price, volume
@@ -46,10 +44,10 @@ def get_stock_data(symbol):
         ORDER BY date DESC 
         LIMIT 30
     """, (symbol,))
-    
+
     price_data = cursor.fetchall()
     conn.close()
-    
+
     return jsonify([{
         'date': row[0].strftime('%Y-%m-%d'),
         'open': float(row[1]) if row[1] else None,
@@ -64,17 +62,17 @@ def search_stocks():
     query = request.args.get('q', '').upper()
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
         SELECT symbol, long_name, sector 
         FROM companies 
         WHERE symbol ILIKE %s OR long_name ILIKE %s
         LIMIT 10
     """, (f'%{query}%', f'%{query}%'))
-    
+
     results = cursor.fetchall()
     conn.close()
-    
+
     return jsonify([{
         'symbol': result[0],
         'name': result[1],
