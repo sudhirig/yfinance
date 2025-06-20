@@ -3,7 +3,7 @@ run = "npm run dev"
 
 [nix]
 channel = "stable-24_05"
-packages = ["glibcLocales", "libxcrypt", "pkg-config", "sqlite", "xsimd"]
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "libxcrypt", "pkg-config", "qhull", "sqlite", "tcl", "tk", "xsimd"]
 
 [workflows]
 runButton = "Start YFinance App"

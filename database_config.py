@@ -20,5 +20,17 @@ def get_database_url():
     """
     return os.getenv('DATABASE_URL')
 
+def get_db_connection():
+    """
+    Get a database connection using psycopg2
+    """
+    import psycopg2
+    database_url = get_database_url()
+    if database_url:
+        return psycopg2.connect(database_url)
+    else:
+        config = get_database_config()
+        return psycopg2.connect(**config)
+
 # For Replit PostgreSQL, these environment variables are automatically set:
 # DATABASE_URL, PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD

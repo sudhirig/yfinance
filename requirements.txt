@@ -21,3 +21,7 @@ flask
 gunicorn
 matplotlib
 seaborn
+flask
+gunicorn
+flask
+gunicorn
