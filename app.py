@@ -17,9 +17,10 @@ def get_stocks():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT symbol, long_name, sector, market_cap 
-        FROM companies 
-        ORDER BY market_cap DESC NULLS LAST 
+        SELECT c.symbol, c.long_name, c.sector, cm.market_cap 
+        FROM companies c
+        LEFT JOIN company_metrics cm ON c.id = cm.company_id
+        ORDER BY cm.market_cap DESC NULLS LAST 
         LIMIT 50
     """)
     stocks = cursor.fetchall()
