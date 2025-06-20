@@ -17,3 +17,7 @@ yfinance
 psycopg2-binary
 yfinance
 yfinance
+flask
+gunicorn
+matplotlib
+seaborn
