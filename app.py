@@ -13,23 +13,26 @@ def home():
 
 @app.route('/api/stocks')
 def get_stocks():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT symbol, long_name, sector, industry
-        FROM companies 
-        ORDER BY symbol 
-        LIMIT 50
-    """)
-    stocks = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT c.symbol, c.long_name, c.sector, c.industry
+            FROM companies c
+            ORDER BY c.symbol 
+            LIMIT 50
+        """)
+        stocks = cursor.fetchall()
+        conn.close()
 
-    return jsonify([{
-        'symbol': stock[0],
-        'name': stock[1],
-        'sector': stock[2],
-        'industry': stock[3]
-    } for stock in stocks])
+        return jsonify([{
+            'symbol': stock[0],
+            'name': stock[1] if stock[1] else stock[0],
+            'sector': stock[2] if stock[2] else 'N/A',
+            'industry': stock[3] if stock[3] else 'N/A'
+        } for stock in stocks])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stock/<symbol>')
 def get_stock_data(symbol):
