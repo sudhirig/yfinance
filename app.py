@@ -4,6 +4,7 @@ from database_config import get_db_connection
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
@@ -231,17 +232,17 @@ def get_stock_info(symbol):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT c.*, cm.*
             FROM companies c
             LEFT JOIN company_metrics cm ON c.id = cm.company_id
             WHERE c.symbol = %s
         """, (symbol,))
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         if not result:
             return jsonify({
                 'symbol': symbol,
@@ -257,7 +258,7 @@ def get_stock_info(symbol):
                 'dividend_yield': None,
                 'beta': None
             })
-            
+
         # Map database columns to response
         return jsonify({
             'symbol': result[1] if result[1] else symbol,
@@ -273,7 +274,7 @@ def get_stock_info(symbol):
             'dividend_yield': result[17] if len(result) > 17 and result[17] else None,
             'beta': result[18] if len(result) > 18 and result[18] else None
         })
-        
+
     except Exception as e:
         print(f"Error in stock info for {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -284,17 +285,17 @@ def get_stock_metrics(symbol):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT cm.*
             FROM company_metrics cm
             JOIN companies c ON c.id = cm.company_id
             WHERE c.symbol = %s
         """, (symbol,))
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         if not result:
             # Return empty metrics if no data found
             return jsonify({
@@ -320,7 +321,7 @@ def get_stock_metrics(symbol):
                 'operating_cash_flow': None,
                 'levered_free_cash_flow': None
             })
-            
+
         return jsonify({
             'market_cap': result[2] if len(result) > 2 else None,
             'trailing_pe': result[3] if len(result) > 3 else None,
@@ -344,7 +345,7 @@ def get_stock_metrics(symbol):
             'operating_cash_flow': result[21] if len(result) > 21 else None,
             'levered_free_cash_flow': result[22] if len(result) > 22 else None
         })
-        
+
     except Exception as e:
         print(f"Error in metrics for {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -355,7 +356,7 @@ def get_stock_financials(symbol):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Get income statements with better error handling
         try:
             cursor.execute("""
@@ -373,7 +374,7 @@ def get_stock_financials(symbol):
             print(f"Income statement query error for {symbol}: {e}")
             cursor.execute("SELECT 1 WHERE FALSE")  # Empty result
         income_data = cursor.fetchall()
-        
+
         # Get balance sheets with error handling
         try:
             cursor.execute("""
@@ -392,7 +393,7 @@ def get_stock_financials(symbol):
         except Exception as e:
             balance_data = []
             print(f"Balance sheet query error for {symbol}: {e}")
-        
+
         # Get cash flow statements with error handling
         try:
             cursor.execute("""
@@ -410,9 +411,9 @@ def get_stock_financials(symbol):
         except Exception as e:
             cashflow_data = []
             print(f"Cash flow query error for {symbol}: {e}")
-        
+
         conn.close()
-        
+
         return jsonify({
             'income': [{
                 'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
@@ -461,115 +462,283 @@ def get_stock_financials(symbol):
                 'change_in_working_capital': float(row[10]) if row[10] else None
             } for row in cashflow_data]
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stock/<symbol>/ratios')
 def get_stock_ratios(symbol):
-    """Get financial ratios calculated from statements"""
+    """Get financial ratios for a specific stock"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute("""
-                SELECT 
-                    i.period_ending,
-                    CASE WHEN i.total_revenue > 0 THEN i.net_income::float / i.total_revenue * 100 ELSE NULL END as profit_margin,
-                    CASE WHEN b.total_assets > 0 THEN i.net_income::float / b.total_assets * 100 ELSE NULL END as roa,
-                    CASE WHEN b.stockholders_equity > 0 THEN i.net_income::float / b.stockholders_equity * 100 ELSE NULL END as roe,
-                    CASE WHEN b.current_liabilities > 0 THEN b.current_assets::float / b.current_liabilities ELSE NULL END as current_ratio,
-                    CASE WHEN b.stockholders_equity > 0 THEN b.total_debt::float / b.stockholders_equity ELSE NULL END as debt_to_equity,
-                    CASE WHEN i.total_revenue > 0 THEN i.operating_income::float / i.total_revenue * 100 ELSE NULL END as operating_margin
-                FROM income_statements i
-                JOIN balance_sheets b ON i.company_id = b.company_id AND i.period_ending = b.period_ending
-                JOIN companies c ON c.id = i.company_id
-                WHERE c.symbol = %s
-                ORDER BY i.period_ending DESC
-                LIMIT 5
-            """, (symbol,))
-        except Exception as e:
-            print(f"Ratios query error for {symbol}: {e}")
-            cursor.execute("SELECT NULL, NULL, NULL, NULL, NULL, NULL, NULL WHERE FALSE")  # Empty result
-        
-        ratios = cursor.fetchall()
-        conn.close()
-        
-        return jsonify([{
-            'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
-            'profit_margin': row[1],
-            'return_on_assets': row[2],
-            'return_on_equity': row[3],
-            'current_ratio': row[4],
-            'debt_to_equity': row[5],
-            'operating_margin': row[6]
-        } for row in ratios])
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-@app.route('/api/stock/<symbol>/analysis')
-def get_stock_analysis(symbol):
-    """Get comprehensive analysis including trends and comparisons"""
+        # Get company ID
+        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
+        company = cursor.fetchone()
+
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+
+        company_id = company['id']
+
+        # Calculate ratios from latest data
+        cursor.execute("""
+            WITH latest_data AS (
+                SELECT 
+                    i.total_revenue, i.net_income, i.gross_profit, i.operating_income,
+                    b.total_assets, b.stockholders_equity, b.total_debt, b.current_assets, b.current_liabilities,
+                    cf.operating_cash_flow, cf.free_cash_flow,
+                    cm.market_cap, cm.trailing_pe, cm.price_to_book, cm.dividend_yield
+                FROM companies c
+                LEFT JOIN income_statements i ON c.id = i.company_id 
+                    AND i.period_ending = (SELECT MAX(period_ending) FROM income_statements WHERE company_id = c.id AND period_type = 'annual')
+                    AND i.period_type = 'annual'
+                LEFT JOIN balance_sheets b ON c.id = b.company_id 
+                    AND b.period_ending = (SELECT MAX(period_ending) FROM balance_sheets WHERE company_id = c.id AND period_type = 'annual')
+                    AND b.period_type = 'annual'
+                LEFT JOIN cash_flow_statements cf ON c.id = cf.company_id 
+                    AND cf.period_ending = (SELECT MAX(period_ending) FROM cash_flow_statements WHERE company_id = c.id AND period_type = 'annual')
+                    AND cf.period_type = 'annual'
+                LEFT JOIN company_metrics cm ON c.id = cm.company_id
+                WHERE c.id = %s
+            )
+            SELECT 
+                -- Profitability Ratios
+                CASE WHEN total_revenue > 0 THEN ROUND((gross_profit::numeric / total_revenue * 100), 2) ELSE NULL END as gross_margin,
+                CASE WHEN total_revenue > 0 THEN ROUND((operating_income::numeric / total_revenue * 100), 2) ELSE NULL END as operating_margin,
+                CASE WHEN total_revenue > 0 THEN ROUND((net_income::numeric / total_revenue * 100), 2) ELSE NULL END as net_margin,
+                CASE WHEN total_assets > 0 THEN ROUND((net_income::numeric / total_assets * 100), 2) ELSE NULL END as roa,
+                CASE WHEN stockholders_equity > 0 THEN ROUND((net_income::numeric / stockholders_equity * 100), 2) ELSE NULL END as roe,
+
+                -- Liquidity Ratios
+                CASE WHEN current_liabilities > 0 THEN ROUND((current_assets::numeric / current_liabilities), 2) ELSE NULL END as current_ratio,
+
+                -- Leverage Ratios
+                CASE WHEN stockholders_equity > 0 THEN ROUND((total_debt::numeric / stockholders_equity), 2) ELSE NULL END as debt_to_equity,
+                CASE WHEN total_assets > 0 THEN ROUND((total_debt::numeric / total_assets * 100), 2) ELSE NULL END as debt_ratio,
+
+                -- Valuation Ratios
+                trailing_pe,
+                price_to_book,
+                dividend_yield,
+
+                -- Efficiency Ratios
+                CASE WHEN total_assets > 0 THEN ROUND((total_revenue::numeric / total_assets), 2) ELSE NULL END as asset_turnover
+            FROM latest_data
+        """, (company_id,))
+
+        ratios = cursor.fetchone()
+        cursor.close()
+
+        if ratios:
+            return jsonify(dict(ratios))
+        else:
+            return jsonify({'error': 'No financial data available'}), 404
+
+    except Exception as e:
+        print(f"Error fetching ratios for {symbol}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/stock/<symbol>/historical-metrics')
+def get_historical_metrics(symbol):
+    """Get historical metrics for a specific stock"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Revenue growth analysis
-        cursor.execute("""
-            WITH revenue_growth AS (
-                SELECT 
-                    period_ending,
-                    total_revenue,
-                    LAG(total_revenue) OVER (ORDER BY period_ending) as prev_revenue,
-                    CASE WHEN LAG(total_revenue) OVER (ORDER BY period_ending) > 0 
-                         THEN (total_revenue - LAG(total_revenue) OVER (ORDER BY period_ending))::float / LAG(total_revenue) OVER (ORDER BY period_ending) * 100 
-                         ELSE NULL END as growth_rate
-                FROM income_statements i
-                JOIN companies c ON c.id = i.company_id
-                WHERE c.symbol = %s AND i.period_type = 'annual' AND i.total_revenue IS NOT NULL
-                ORDER BY period_ending DESC
-                LIMIT 5
-            )
-            SELECT * FROM revenue_growth WHERE growth_rate IS NOT NULL
-        """, (symbol,))
-        
-        growth_data = cursor.fetchall()
-        
-        # Price performance vs sector
+        period_type = request.args.get('period', 'quarterly')  # annual, quarterly
+        limit = request.args.get('limit', 20, type=int)
+
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get company ID
+        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
+        company = cursor.fetchone()
+
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+
+        company_id = company['id']
+
+        # Get historical metrics
         cursor.execute("""
             SELECT 
-                c.sector,
-                COUNT(*) as sector_companies,
-                AVG(cm.trailing_pe) as avg_sector_pe,
-                AVG(cm.price_to_book) as avg_sector_pb
-            FROM companies c
-            JOIN company_metrics cm ON c.id = cm.company_id
-            WHERE c.sector = (SELECT sector FROM companies WHERE symbol = %s)
-            GROUP BY c.sector
-        """, (symbol,))
-        
-        sector_data = cursor.fetchone()
-        
-        conn.close()
-        
-        return jsonify({
-            'revenue_growth': [{
-                'period': row[0].strftime('%Y-%m-%d') if row[0] else None,
-                'revenue': row[1],
-                'growth_rate': row[3]
-            } for row in growth_data],
-            'sector_comparison': {
-                'sector': sector_data[0] if sector_data else None,
-                'sector_companies': sector_data[1] if sector_data else None,
-                'avg_sector_pe': sector_data[2] if sector_data else None,
-                'avg_sector_pb': sector_data[3] if sector_data else None
-            } if sector_data else None
-        })
-        
+                metric_date,
+                period_type,
+                market_cap,
+                trailing_pe,
+                price_to_book,
+                gross_margin,
+                operating_margin,
+                profit_margin,
+                return_on_equity,
+                return_on_assets,
+                debt_to_equity,
+                current_ratio,
+                revenue_growth_yoy,
+                earnings_growth_yoy,
+                dividend_yield,
+                fcf_per_share
+            FROM historical_company_metrics
+            WHERE company_id = %s AND period_type = %s
+            ORDER BY metric_date DESC
+            LIMIT %s
+        """, (company_id, period_type, limit))
+
+        metrics = cursor.fetchall()
+        cursor.close()
+
+        # Convert to list of dictionaries with formatted dates
+        result = []
+        for metric in metrics:
+            metric_dict = dict(metric)
+            metric_dict['metric_date'] = metric_dict['metric_date'].isoformat()
+            result.append(metric_dict)
+
+        return jsonify(result)
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error fetching historical metrics for {symbol}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/stock/<symbol>/metrics-trend')
+def get_metrics_trend(symbol):
+    """Get metrics trend analysis for a specific stock"""
+    try:
+        conn = get_db_connection()
+        metric = request.args.get('metric', 'trailing_pe')
+        period_type = request.args.get('period', 'quarterly')
+        years = request.args.get('years', 3, type=int)
+
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get company ID
+        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
+        company = cursor.fetchone()
+
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+
+        company_id = company['id']
+
+        # Calculate start date
+        from datetime import date, timedelta
+        start_date = date.today() - timedelta(days=years * 365)
+
+        # Dynamic query based on requested metric
+        valid_metrics = [
+            'trailing_pe', 'price_to_book', 'gross_margin', 'operating_margin', 
+            'profit_margin', 'return_on_equity', 'debt_to_equity', 'revenue_growth_yoy'
+        ]
+
+        if metric not in valid_metrics:
+            return jsonify({'error': f'Invalid metric. Valid options: {valid_metrics}'}), 400
+
+        cursor.execute(f"""
+            SELECT 
+                metric_date,
+                {metric} as value,
+                LAG({metric}) OVER (ORDER BY metric_date) as previous_value
+            FROM historical_company_metrics
+            WHERE company_id = %s 
+            AND period_type = %s 
+            AND metric_date >= %s
+            AND {metric} IS NOT NULL
+            ORDER BY metric_date
+        """, (company_id, period_type, start_date))
+
+        trend_data = cursor.fetchall()
+        cursor.close()
+
+        # Calculate trend statistics
+        values = [float(row['value']) for row in trend_data if row['value'] is not None]
+
+        if not values:
+            return jsonify({'error': 'No data available for trend analysis'}), 404
+
+        trend_stats = {
+            'metric': metric,
+            'period_type': period_type,
+            'data_points': len(values),
+            'latest_value': values[-1] if values else None,
+            'avg_value': sum(values) / len(values),
+            'min_value': min(values),
+            'max_value': max(values),
+            'trend': 'improving' if len(values) > 1 and values[-1] > values[0] else 'declining',
+            'data': [
+                {
+                    'date': row['metric_date'].isoformat(),
+                    'value': float(row['value']),
+                    'change': float(row['value'] - row['previous_value']) if row['previous_value'] else None
+                }
+                for row in trend_data if row['value'] is not None
+            ]
+        }
+
+        return jsonify(trend_stats)
+
+    except Exception as e:
+        print(f"Error fetching metrics trend for {symbol}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/metrics/comparison')
+def get_metrics_comparison():
+    """Compare metrics across multiple companies"""
+    try:
+        conn = get_db_connection()
+        symbols = request.args.get('symbols', '').split(',')
+        metric = request.args.get('metric', 'trailing_pe')
+        period_type = request.args.get('period', 'quarterly')
+
+        if not symbols or len(symbols) > 10:
+            return jsonify({'error': 'Please provide 1-10 company symbols'}), 400
+
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get latest metrics for comparison
+        placeholders = ','.join(['%s'] * len(symbols))
+        cursor.execute(f"""
+            SELECT 
+                c.symbol,
+                c.long_name,
+                hcm.metric_date,
+                hcm.{metric} as value
+            FROM companies c
+            JOIN historical_company_metrics hcm ON c.id = hcm.company_id
+            WHERE c.symbol IN ({placeholders})
+            AND hcm.period_type = %s
+            AND hcm.{metric} IS NOT NULL
+            AND hcm.metric_date = (
+                SELECT MAX(metric_date) 
+                FROM historical_company_metrics hcm2 
+                WHERE hcm2.company_id = hcm.company_id 
+                AND hcm2.period_type = %s
+                AND hcm2.{metric} IS NOT NULL
+            )
+            ORDER BY hcm.{metric} DESC
+        """, symbols + [period_type, period_type])
+
+        comparison_data = cursor.fetchall()
+        cursor.close()
+
+        result = {
+            'metric': metric,
+            'period_type': period_type,
+            'companies': [
+                {
+                    'symbol': row['symbol'],
+                    'name': row['long_name'],
+                    'value': float(row['value']),
+                    'date': row['metric_date'].isoformat()
+                }
+                for row in comparison_data
+            ]
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Error in metrics comparison: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/admin/download', methods=['POST'])
 def admin_download():
@@ -592,4 +761,5 @@ def admin_download():
         return jsonify({'success': False, 'message': f'Failed to start download: {str(e)}'})
 
 if __name__ == '__main__':
+    conn = get_db_connection()
     app.run(host='0.0.0.0', port=5000, debug=True)
