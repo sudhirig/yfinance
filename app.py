@@ -225,6 +225,265 @@ def admin_stats():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error getting stats: {str(e)}'})
 
+@app.route('/api/stock/<symbol>/info')
+def get_stock_info(symbol):
+    """Get comprehensive company information"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT c.*, cm.*
+            FROM companies c
+            LEFT JOIN company_metrics cm ON c.id = cm.company_id
+            WHERE c.symbol = %s
+        """, (symbol,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return jsonify({'error': 'Stock not found'}), 404
+            
+        # Map database columns to response
+        return jsonify({
+            'symbol': result[1],
+            'long_name': result[2],
+            'sector': result[3],
+            'industry': result[4],
+            'business_summary': result[5],
+            'website': result[6],
+            'full_time_employees': result[7],
+            'market_cap': result[14] if len(result) > 14 else None,
+            'trailing_pe': result[15] if len(result) > 15 else None,
+            'price_to_book': result[16] if len(result) > 16 else None,
+            'dividend_yield': result[17] if len(result) > 17 else None,
+            'beta': result[18] if len(result) > 18 else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock/<symbol>/metrics')
+def get_stock_metrics(symbol):
+    """Get financial metrics for a stock"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT cm.*
+            FROM company_metrics cm
+            JOIN companies c ON c.id = cm.company_id
+            WHERE c.symbol = %s
+        """, (symbol,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return jsonify({'error': 'Metrics not found'}), 404
+            
+        return jsonify({
+            'market_cap': result[2],
+            'trailing_pe': result[3],
+            'forward_pe': result[4],
+            'price_to_book': result[5],
+            'dividend_yield': result[6],
+            'dividend_rate': result[7],
+            'beta': result[8],
+            'fifty_two_week_high': result[9],
+            'fifty_two_week_low': result[10],
+            'price_to_sales': result[11],
+            'enterprise_value': result[12],
+            'profit_margin': result[13],
+            'operating_margin': result[14],
+            'return_on_assets': result[15],
+            'return_on_equity': result[16],
+            'revenue_per_share': result[17],
+            'debt_to_equity': result[18],
+            'current_ratio': result[19],
+            'book_value': result[20],
+            'operating_cash_flow': result[21],
+            'levered_free_cash_flow': result[22]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock/<symbol>/financials')
+def get_stock_financials(symbol):
+    """Get financial statements for a stock"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get income statements
+        cursor.execute("""
+            SELECT * FROM income_statements i
+            JOIN companies c ON c.id = i.company_id
+            WHERE c.symbol = %s AND i.period_type = 'annual'
+            ORDER BY i.period_ending DESC
+            LIMIT 5
+        """, (symbol,))
+        income_data = cursor.fetchall()
+        
+        # Get balance sheets
+        cursor.execute("""
+            SELECT * FROM balance_sheets b
+            JOIN companies c ON c.id = b.company_id
+            WHERE c.symbol = %s AND b.period_type = 'annual'
+            ORDER BY b.period_ending DESC
+            LIMIT 5
+        """, (symbol,))
+        balance_data = cursor.fetchall()
+        
+        # Get cash flow statements
+        cursor.execute("""
+            SELECT * FROM cash_flow_statements cf
+            JOIN companies c ON c.id = cf.company_id
+            WHERE c.symbol = %s AND cf.period_type = 'annual'
+            ORDER BY cf.period_ending DESC
+            LIMIT 5
+        """, (symbol,))
+        cashflow_data = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            'income': [{
+                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
+                'total_revenue': row[5],
+                'cost_of_revenue': row[6],
+                'gross_profit': row[7],
+                'operating_income': row[8],
+                'net_income': row[9],
+                'earnings_per_share': row[10]
+            } for row in income_data],
+            'balance': [{
+                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
+                'total_assets': row[5],
+                'current_assets': row[6],
+                'total_liabilities': row[7],
+                'current_liabilities': row[8],
+                'stockholders_equity': row[9],
+                'total_debt': row[10]
+            } for row in balance_data],
+            'cashflow': [{
+                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
+                'operating_cash_flow': row[5],
+                'investing_cash_flow': row[6],
+                'financing_cash_flow': row[7],
+                'free_cash_flow': row[8],
+                'capital_expenditures': row[9]
+            } for row in cashflow_data]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock/<symbol>/ratios')
+def get_stock_ratios(symbol):
+    """Get financial ratios calculated from statements"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                i.period_ending,
+                CASE WHEN i.total_revenue > 0 THEN i.net_income::float / i.total_revenue * 100 ELSE NULL END as profit_margin,
+                CASE WHEN b.total_assets > 0 THEN i.net_income::float / b.total_assets * 100 ELSE NULL END as roa,
+                CASE WHEN b.stockholders_equity > 0 THEN i.net_income::float / b.stockholders_equity * 100 ELSE NULL END as roe,
+                CASE WHEN b.current_liabilities > 0 THEN b.current_assets::float / b.current_liabilities ELSE NULL END as current_ratio,
+                CASE WHEN b.stockholders_equity > 0 THEN b.total_debt::float / b.stockholders_equity ELSE NULL END as debt_to_equity,
+                CASE WHEN i.total_revenue > 0 THEN i.operating_income::float / i.total_revenue * 100 ELSE NULL END as operating_margin
+            FROM income_statements i
+            JOIN balance_sheets b ON i.company_id = b.company_id AND i.period_ending = b.period_ending
+            JOIN companies c ON c.id = i.company_id
+            WHERE c.symbol = %s AND i.period_type = 'annual'
+            ORDER BY i.period_ending DESC
+            LIMIT 5
+        """, (symbol,))
+        
+        ratios = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([{
+            'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+            'profit_margin': row[1],
+            'return_on_assets': row[2],
+            'return_on_equity': row[3],
+            'current_ratio': row[4],
+            'debt_to_equity': row[5],
+            'operating_margin': row[6]
+        } for row in ratios])
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock/<symbol>/analysis')
+def get_stock_analysis(symbol):
+    """Get comprehensive analysis including trends and comparisons"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Revenue growth analysis
+        cursor.execute("""
+            WITH revenue_growth AS (
+                SELECT 
+                    period_ending,
+                    total_revenue,
+                    LAG(total_revenue) OVER (ORDER BY period_ending) as prev_revenue,
+                    CASE WHEN LAG(total_revenue) OVER (ORDER BY period_ending) > 0 
+                         THEN (total_revenue - LAG(total_revenue) OVER (ORDER BY period_ending))::float / LAG(total_revenue) OVER (ORDER BY period_ending) * 100 
+                         ELSE NULL END as growth_rate
+                FROM income_statements i
+                JOIN companies c ON c.id = i.company_id
+                WHERE c.symbol = %s AND i.period_type = 'annual' AND i.total_revenue IS NOT NULL
+                ORDER BY period_ending DESC
+                LIMIT 5
+            )
+            SELECT * FROM revenue_growth WHERE growth_rate IS NOT NULL
+        """, (symbol,))
+        
+        growth_data = cursor.fetchall()
+        
+        # Price performance vs sector
+        cursor.execute("""
+            SELECT 
+                c.sector,
+                COUNT(*) as sector_companies,
+                AVG(cm.trailing_pe) as avg_sector_pe,
+                AVG(cm.price_to_book) as avg_sector_pb
+            FROM companies c
+            JOIN company_metrics cm ON c.id = cm.company_id
+            WHERE c.sector = (SELECT sector FROM companies WHERE symbol = %s)
+            GROUP BY c.sector
+        """, (symbol,))
+        
+        sector_data = cursor.fetchone()
+        
+        conn.close()
+        
+        return jsonify({
+            'revenue_growth': [{
+                'period': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'revenue': row[1],
+                'growth_rate': row[3]
+            } for row in growth_data],
+            'sector_comparison': {
+                'sector': sector_data[0] if sector_data else None,
+                'sector_companies': sector_data[1] if sector_data else None,
+                'avg_sector_pe': sector_data[2] if sector_data else None,
+                'avg_sector_pb': sector_data[3] if sector_data else None
+            } if sector_data else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/download', methods=['POST'])
 def admin_download():
     """Start background download process"""
