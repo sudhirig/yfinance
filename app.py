@@ -318,46 +318,47 @@ def get_stock_financials(symbol):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get company ID first
-        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
-        company_result = cursor.fetchone()
-        if not company_result:
-            conn.close()
-            return jsonify({'error': 'Company not found'}), 404
-        
-        company_id = company_result[0]
-        
-        # Get income statements - safer column selection
+        # Get income statements with proper column mapping
         cursor.execute("""
             SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
-                   i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share
+                   i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share,
+                   i.research_development, i.selling_general_admin, i.interest_expense,
+                   i.income_before_tax, i.income_tax_expense, i.other_income_expense
             FROM income_statements i
-            WHERE i.company_id = %s AND i.period_type = 'annual'
+            JOIN companies c ON c.id = i.company_id
+            WHERE c.symbol = %s AND i.period_type = 'annual'
             ORDER BY i.period_ending DESC
             LIMIT 5
-        """, (company_id,))
+        """, (symbol,))
         income_data = cursor.fetchall()
         
-        # Get balance sheets - safer column selection
+        # Get balance sheets with proper column mapping
         cursor.execute("""
             SELECT b.period_ending, b.period_type, b.total_assets, b.current_assets,
-                   b.total_liabilities, b.current_liabilities, b.stockholders_equity, b.total_debt
+                   b.total_liabilities, b.current_liabilities, b.stockholders_equity,
+                   b.total_debt, b.cash_and_equivalents, b.accounts_receivable,
+                   b.inventory, b.property_plant_equipment, b.accounts_payable,
+                   b.long_term_debt, b.retained_earnings
             FROM balance_sheets b
-            WHERE b.company_id = %s AND b.period_type = 'annual'
+            JOIN companies c ON c.id = b.company_id
+            WHERE c.symbol = %s AND b.period_type = 'annual'
             ORDER BY b.period_ending DESC
             LIMIT 5
-        """, (company_id,))
+        """, (symbol,))
         balance_data = cursor.fetchall()
         
-        # Get cash flow statements - safer column selection
+        # Get cash flow statements with proper column mapping
         cursor.execute("""
-            SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow, cf.investing_cash_flow,
-                   cf.financing_cash_flow, cf.free_cash_flow, cf.capital_expenditures
+            SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow,
+                   cf.investing_cash_flow, cf.financing_cash_flow, cf.free_cash_flow,
+                   cf.capital_expenditures, cf.dividends_paid, cf.net_change_in_cash,
+                   cf.depreciation_amortization, cf.change_in_working_capital
             FROM cash_flow_statements cf
-            WHERE cf.company_id = %s AND cf.period_type = 'annual'
+            JOIN companies c ON c.id = cf.company_id
+            WHERE c.symbol = %s AND cf.period_type = 'annual'
             ORDER BY cf.period_ending DESC
             LIMIT 5
-        """, (company_id,))
+        """, (symbol,))
         cashflow_data = cursor.fetchall()
         
         conn.close()
@@ -365,29 +366,49 @@ def get_stock_financials(symbol):
         return jsonify({
             'income': [{
                 'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'period_type': row[1],
                 'total_revenue': float(row[2]) if row[2] else None,
                 'cost_of_revenue': float(row[3]) if row[3] else None,
                 'gross_profit': float(row[4]) if row[4] else None,
                 'operating_income': float(row[5]) if row[5] else None,
                 'net_income': float(row[6]) if row[6] else None,
-                'earnings_per_share': float(row[7]) if row[7] else None
+                'earnings_per_share': float(row[7]) if row[7] else None,
+                'research_development': float(row[8]) if row[8] else None,
+                'selling_general_admin': float(row[9]) if row[9] else None,
+                'interest_expense': float(row[10]) if row[10] else None,
+                'income_before_tax': float(row[11]) if row[11] else None,
+                'income_tax_expense': float(row[12]) if row[12] else None,
+                'other_income_expense': float(row[13]) if row[13] else None
             } for row in income_data],
             'balance': [{
                 'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'period_type': row[1],
                 'total_assets': float(row[2]) if row[2] else None,
                 'current_assets': float(row[3]) if row[3] else None,
                 'total_liabilities': float(row[4]) if row[4] else None,
                 'current_liabilities': float(row[5]) if row[5] else None,
                 'stockholders_equity': float(row[6]) if row[6] else None,
-                'total_debt': float(row[7]) if row[7] else None
+                'total_debt': float(row[7]) if row[7] else None,
+                'cash_and_equivalents': float(row[8]) if row[8] else None,
+                'accounts_receivable': float(row[9]) if row[9] else None,
+                'inventory': float(row[10]) if row[10] else None,
+                'property_plant_equipment': float(row[11]) if row[11] else None,
+                'accounts_payable': float(row[12]) if row[12] else None,
+                'long_term_debt': float(row[13]) if row[13] else None,
+                'retained_earnings': float(row[14]) if row[14] else None
             } for row in balance_data],
             'cashflow': [{
                 'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'period_type': row[1],
                 'operating_cash_flow': float(row[2]) if row[2] else None,
                 'investing_cash_flow': float(row[3]) if row[3] else None,
                 'financing_cash_flow': float(row[4]) if row[4] else None,
                 'free_cash_flow': float(row[5]) if row[5] else None,
-                'capital_expenditures': float(row[6]) if row[6] else None
+                'capital_expenditures': float(row[6]) if row[6] else None,
+                'dividends_paid': float(row[7]) if row[7] else None,
+                'net_change_in_cash': float(row[8]) if row[8] else None,
+                'depreciation_amortization': float(row[9]) if row[9] else None,
+                'change_in_working_capital': float(row[10]) if row[10] else None
             } for row in cashflow_data]
         })
         
