@@ -542,12 +542,12 @@ def get_stock_ratios(symbol):
 
 @app.route('/api/stock/<symbol>/historical-metrics')
 def get_historical_metrics(symbol):
-    """Get historical metrics for a specific stock"""
+    """Get historical metrics for a stock"""
     try:
-        conn = get_db_connection()
-        period_type = request.args.get('period', 'quarterly')  # annual, quarterly
-        limit = request.args.get('limit', 20, type=int)
+        period = request.args.get('period', 'quarterly')
+        limit = int(request.args.get('limit', 20))
 
+        conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Get company ID
@@ -582,10 +582,11 @@ def get_historical_metrics(symbol):
             WHERE company_id = %s AND period_type = %s
             ORDER BY metric_date DESC
             LIMIT %s
-        """, (company_id, period_type, limit))
+        """, (company_id, period, limit))
 
         metrics = cursor.fetchall()
         cursor.close()
+        conn.close()
 
         # Convert to list of dictionaries with formatted dates
         result = []
@@ -599,6 +600,54 @@ def get_historical_metrics(symbol):
     except Exception as e:
         print(f"Error fetching historical metrics for {symbol}: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/stock/<symbol>/refresh-metrics', methods=['POST'])
+def refresh_stock_metrics(symbol):
+    """Refresh metrics for a specific stock from yfinance"""
+    try:
+        from historical_metrics_calculator import HistoricalMetricsCalculator
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get company ID
+        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
+        company = cursor.fetchone()
+
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+
+        company_id = company['id']
+        conn.close()
+
+        # Refresh metrics
+        calculator = HistoricalMetricsCalculator()
+        calculator.populate_historical_metrics_for_company(company_id, symbol)
+
+        return jsonify({
+            'message': f'Metrics refreshed successfully for {symbol}',
+            'symbol': symbol
+        })
+
+    except Exception as e:
+        print(f"Error refreshing metrics for {symbol}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/refresh-all-metrics', methods=['POST'])
+def refresh_all_metrics():
+    """Refresh current metrics for all companies from yfinance"""
+    try:
+        from historical_metrics_calculator import HistoricalMetricsCalculator
+
+        calculator = HistoricalMetricsCalculator()
+        calculator.populate_all_current_metrics()
+
+        return jsonify({
+            'message': 'All current metrics refresh started successfully'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stock/<symbol>/metrics-trend')
 def get_metrics_trend(symbol):
@@ -760,6 +809,9 @@ def admin_download():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to start download: {str(e)}'})
 
-if __name__ == '__main__':
+def get_db_cursor():
     conn = get_db_connection()
+    return conn.cursor(cursor_factory=RealDictCursor)
+
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
