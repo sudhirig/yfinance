@@ -243,25 +243,39 @@ def get_stock_info(symbol):
         conn.close()
         
         if not result:
-            return jsonify({'error': 'Stock not found'}), 404
+            return jsonify({
+                'symbol': symbol,
+                'long_name': symbol.replace('.NS', ''),
+                'sector': None,
+                'industry': None,
+                'business_summary': None,
+                'website': None,
+                'full_time_employees': None,
+                'market_cap': None,
+                'trailing_pe': None,
+                'price_to_book': None,
+                'dividend_yield': None,
+                'beta': None
+            })
             
         # Map database columns to response
         return jsonify({
-            'symbol': result[1],
-            'long_name': result[2],
-            'sector': result[3],
-            'industry': result[4],
-            'business_summary': result[5],
-            'website': result[6],
-            'full_time_employees': result[7],
-            'market_cap': result[14] if len(result) > 14 else None,
-            'trailing_pe': result[15] if len(result) > 15 else None,
-            'price_to_book': result[16] if len(result) > 16 else None,
-            'dividend_yield': result[17] if len(result) > 17 else None,
-            'beta': result[18] if len(result) > 18 else None
+            'symbol': result[1] if result[1] else symbol,
+            'long_name': result[2] if result[2] else symbol.replace('.NS', ''),
+            'sector': result[3] if len(result) > 3 else None,
+            'industry': result[4] if len(result) > 4 else None,
+            'business_summary': result[5] if len(result) > 5 else None,
+            'website': result[6] if len(result) > 6 else None,
+            'full_time_employees': result[7] if len(result) > 7 else None,
+            'market_cap': result[14] if len(result) > 14 and result[14] else None,
+            'trailing_pe': result[15] if len(result) > 15 and result[15] else None,
+            'price_to_book': result[16] if len(result) > 16 and result[16] else None,
+            'dividend_yield': result[17] if len(result) > 17 and result[17] else None,
+            'beta': result[18] if len(result) > 18 and result[18] else None
         })
         
     except Exception as e:
+        print(f"Error in stock info for {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stock/<symbol>/metrics')
@@ -282,33 +296,57 @@ def get_stock_metrics(symbol):
         conn.close()
         
         if not result:
-            return jsonify({'error': 'Metrics not found'}), 404
+            # Return empty metrics if no data found
+            return jsonify({
+                'market_cap': None,
+                'trailing_pe': None,
+                'forward_pe': None,
+                'price_to_book': None,
+                'dividend_yield': None,
+                'dividend_rate': None,
+                'beta': None,
+                'fifty_two_week_high': None,
+                'fifty_two_week_low': None,
+                'price_to_sales': None,
+                'enterprise_value': None,
+                'profit_margin': None,
+                'operating_margin': None,
+                'return_on_assets': None,
+                'return_on_equity': None,
+                'revenue_per_share': None,
+                'debt_to_equity': None,
+                'current_ratio': None,
+                'book_value': None,
+                'operating_cash_flow': None,
+                'levered_free_cash_flow': None
+            })
             
         return jsonify({
-            'market_cap': result[2],
-            'trailing_pe': result[3],
-            'forward_pe': result[4],
-            'price_to_book': result[5],
-            'dividend_yield': result[6],
-            'dividend_rate': result[7],
-            'beta': result[8],
-            'fifty_two_week_high': result[9],
-            'fifty_two_week_low': result[10],
-            'price_to_sales': result[11],
-            'enterprise_value': result[12],
-            'profit_margin': result[13],
-            'operating_margin': result[14],
-            'return_on_assets': result[15],
-            'return_on_equity': result[16],
-            'revenue_per_share': result[17],
-            'debt_to_equity': result[18],
-            'current_ratio': result[19],
-            'book_value': result[20],
-            'operating_cash_flow': result[21],
-            'levered_free_cash_flow': result[22]
+            'market_cap': result[2] if len(result) > 2 else None,
+            'trailing_pe': result[3] if len(result) > 3 else None,
+            'forward_pe': result[4] if len(result) > 4 else None,
+            'price_to_book': result[5] if len(result) > 5 else None,
+            'dividend_yield': result[6] if len(result) > 6 else None,
+            'dividend_rate': result[7] if len(result) > 7 else None,
+            'beta': result[8] if len(result) > 8 else None,
+            'fifty_two_week_high': result[9] if len(result) > 9 else None,
+            'fifty_two_week_low': result[10] if len(result) > 10 else None,
+            'price_to_sales': result[11] if len(result) > 11 else None,
+            'enterprise_value': result[12] if len(result) > 12 else None,
+            'profit_margin': result[13] if len(result) > 13 else None,
+            'operating_margin': result[14] if len(result) > 14 else None,
+            'return_on_assets': result[15] if len(result) > 15 else None,
+            'return_on_equity': result[16] if len(result) > 16 else None,
+            'revenue_per_share': result[17] if len(result) > 17 else None,
+            'debt_to_equity': result[18] if len(result) > 18 else None,
+            'current_ratio': result[19] if len(result) > 19 else None,
+            'book_value': result[20] if len(result) > 20 else None,
+            'operating_cash_flow': result[21] if len(result) > 21 else None,
+            'levered_free_cash_flow': result[22] if len(result) > 22 else None
         })
         
     except Exception as e:
+        print(f"Error in metrics for {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stock/<symbol>/financials')
