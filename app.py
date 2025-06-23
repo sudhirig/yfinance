@@ -322,9 +322,9 @@ def get_stock_financials(symbol):
         try:
             cursor.execute("""
                 SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
-                       i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share,
-                       i.research_development, i.selling_general_admin, i.interest_expense,
-                       i.income_before_tax, i.income_tax_expense, i.other_income_expense
+                       i.gross_profit, i.operating_income, i.net_income, i.diluted_eps,
+                       i.operating_expense, i.interest_expense, i.tax_provision,
+                       i.income_before_tax, i.normalized_income, i.total_expenses
                 FROM income_statements i
                 JOIN companies c ON c.id = i.company_id
                 WHERE c.symbol = %s
@@ -385,12 +385,12 @@ def get_stock_financials(symbol):
                 'operating_income': float(row[5]) if row[5] else None,
                 'net_income': float(row[6]) if row[6] else None,
                 'earnings_per_share': float(row[7]) if row[7] else None,
-                'research_development': float(row[8]) if row[8] else None,
-                'selling_general_admin': float(row[9]) if row[9] else None,
-                'interest_expense': float(row[10]) if row[10] else None,
+                'operating_expense': float(row[8]) if row[8] else None,
+                'interest_expense': float(row[9]) if row[9] else None,
+                'tax_provision': float(row[10]) if row[10] else None,
                 'income_before_tax': float(row[11]) if row[11] else None,
-                'income_tax_expense': float(row[12]) if row[12] else None,
-                'other_income_expense': float(row[13]) if row[13] else None
+                'normalized_income': float(row[12]) if row[12] else None,
+                'total_expenses': float(row[13]) if row[13] else None
             } for row in income_data],
             'balance': [{
                 'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
