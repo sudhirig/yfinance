@@ -542,12 +542,12 @@ def get_stock_ratios(symbol):
 
 @app.route('/api/stock/<symbol>/historical-metrics')
 def get_historical_metrics(symbol):
-    """Get historical metrics for a stock"""
+    """Get historical metrics for a specific stock"""
     try:
-        period = request.args.get('period', 'quarterly')
-        limit = int(request.args.get('limit', 20))
-
         conn = get_db_connection()
+        period_type = request.args.get('period', 'quarterly')  # annual, quarterly
+        limit = request.args.get('limit', 20, type=int)
+
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Get company ID
@@ -582,11 +582,10 @@ def get_historical_metrics(symbol):
             WHERE company_id = %s AND period_type = %s
             ORDER BY metric_date DESC
             LIMIT %s
-        """, (company_id, period, limit))
+        """, (company_id, period_type, limit))
 
         metrics = cursor.fetchall()
         cursor.close()
-        conn.close()
 
         # Convert to list of dictionaries with formatted dates
         result = []
@@ -601,133 +600,136 @@ def get_historical_metrics(symbol):
         print(f"Error fetching historical metrics for {symbol}: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/api/stock/<symbol>/refresh-metrics', methods=['POST'])
-def refresh_stock_metrics(symbol):
-    """Refresh metrics for a specific stock from yfinance"""
+@app.route('/api/stock/<symbol>/metrics-trend')
+def get_metrics_trend(symbol):
+    """Get historical trend for a specific metric"""
     try:
-        from historical_metrics_calculator import HistoricalMetricsCalculator
+        metric = request.args.get('metric', 'trailing_pe')
+        years = int(request.args.get('years', 3))
 
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
 
-        # Get company ID
-        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
-        company = cursor.fetchone()
+        query = """
+            SELECT metric_date, %s as metric_value
+            FROM historical_company_metrics hcm
+            JOIN companies c ON hcm.company_id = c.id
+            WHERE c.symbol = %s 
+                AND metric_date >= %s
+                AND %s IS NOT NULL
+            ORDER BY metric_date ASC
+        """ % (metric, '%s', '%s', metric)
 
-        if not company:
-            return jsonify({'error': 'Company not found'}), 404
+        start_date = datetime.now() - timedelta(days=years*365)
+        cursor.execute(query, (symbol, start_date))
 
-        company_id = company['id']
-        conn.close()
+        results = cursor.fetchall()
+        cursor.close()
 
-        # Refresh metrics
-        calculator = HistoricalMetricsCalculator()
-        calculator.populate_historical_metrics_for_company(company_id, symbol)
-
-        return jsonify({
-            'message': f'Metrics refreshed successfully for {symbol}',
-            'symbol': symbol
-        })
-
-    except Exception as e:
-        print(f"Error refreshing metrics for {symbol}: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/refresh-all-metrics', methods=['POST'])
-def refresh_all_metrics():
-    """Refresh current metrics for all companies from yfinance"""
-    try:
-        from historical_metrics_calculator import HistoricalMetricsCalculator
-
-        calculator = HistoricalMetricsCalculator()
-        calculator.populate_all_current_metrics()
+        if not results:
+            return jsonify({'error': f'No {metric} data found for {symbol}'}), 404
 
         return jsonify({
-            'message': 'All current metrics refresh started successfully'
+            'symbol': symbol,
+            'metric': metric,
+            'years': years,
+            'data': [{'date': row[0].isoformat(), 'value': float(row[1])} for row in results]
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/stock/<symbol>/metrics-trend')
-def get_metrics_trend(symbol):
-    """Get metrics trend analysis for a specific stock"""
+@app.route('/api/stock/<symbol>/fresh-historical-metrics')
+def get_fresh_historical_metrics(symbol):
+    """Fetch fresh historical metrics directly from yfinance"""
     try:
-        conn = get_db_connection()
-        metric = request.args.get('metric', 'trailing_pe')
-        period_type = request.args.get('period', 'quarterly')
-        years = request.args.get('years', 3, type=int)
+        years = int(request.args.get('years', 3))
 
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        from yfinance_historical_metrics_fetcher import YFinanceHistoricalMetricsFetcher
 
-        # Get company ID
-        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
-        company = cursor.fetchone()
+        fetcher = YFinanceHistoricalMetricsFetcher()
 
-        if not company:
-            return jsonify({'error': 'Company not found'}), 404
+        # Get calculated historical metrics
+        metrics_df = fetcher.calculate_historical_metrics(symbol, years_back=years)
 
-        company_id = company['id']
+        if metrics_df is None or metrics_df.empty:
+            return jsonify({'error': f'No data available for {symbol}'}), 404
 
-        # Calculate start date
-        from datetime import date, timedelta
-        start_date = date.today() - timedelta(days=years * 365)
+        # Convert to JSON-friendly format
+        data = []
+        for _, row in metrics_df.iterrows():
+            record = {
+                'date': row['date'].isoformat(),
+                'period_type': row['period_type'],
+                'close_price': row.get('close_price'),
+                'market_cap': row.get('market_cap'),
+                'trailing_pe': row.get('trailing_pe'),
+                'return_on_equity': row.get('return_on_equity'),
+                'price_to_book': row.get('price_to_book'),
+                'price_to_sales': row.get('price_to_sales'),
+                'total_revenue': row.get('total_revenue'),
+                'book_value_per_share': row.get('book_value_per_share')
+            }
+            # Remove None values
+            record = {k: v for k, v in record.items() if v is not None}
+            data.append(record)
 
-        # Dynamic query based on requested metric
-        valid_metrics = [
-            'trailing_pe', 'price_to_book', 'gross_margin', 'operating_margin', 
-            'profit_margin', 'return_on_equity', 'debt_to_equity', 'revenue_growth_yoy'
-        ]
-
-        if metric not in valid_metrics:
-            return jsonify({'error': f'Invalid metric. Valid options: {valid_metrics}'}), 400
-
-        cursor.execute(f"""
-            SELECT 
-                metric_date,
-                {metric} as value,
-                LAG({metric}) OVER (ORDER BY metric_date) as previous_value
-            FROM historical_company_metrics
-            WHERE company_id = %s 
-            AND period_type = %s 
-            AND metric_date >= %s
-            AND {metric} IS NOT NULL
-            ORDER BY metric_date
-        """, (company_id, period_type, start_date))
-
-        trend_data = cursor.fetchall()
-        cursor.close()
-
-        # Calculate trend statistics
-        values = [float(row['value']) for row in trend_data if row['value'] is not None]
-
-        if not values:
-            return jsonify({'error': 'No data available for trend analysis'}), 404
-
-        trend_stats = {
-            'metric': metric,
-            'period_type': period_type,
-            'data_points': len(values),
-            'latest_value': values[-1] if values else None,
-            'avg_value': sum(values) / len(values),
-            'min_value': min(values),
-            'max_value': max(values),
-            'trend': 'improving' if len(values) > 1 and values[-1] > values[0] else 'declining',
-            'data': [
-                {
-                    'date': row['metric_date'].isoformat(),
-                    'value': float(row['value']),
-                    'change': float(row['value'] - row['previous_value']) if row['previous_value'] else None
-                }
-                for row in trend_data if row['value'] is not None
-            ]
-        }
-
-        return jsonify(trend_stats)
+        return jsonify({
+            'symbol': symbol,
+            'years': years,
+            'source': 'yfinance_direct',
+            'records_count': len(data),
+            'data': data
+        })
 
     except Exception as e:
-        print(f"Error fetching metrics trend for {symbol}: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock/<symbol>/price-history-metrics')
+def get_price_history_metrics(symbol):
+    """Get price-based historical metrics directly from yfinance"""
+    try:
+        period = request.args.get('period', '2y')  # 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+
+        from yfinance_historical_metrics_fetcher import YFinanceHistoricalMetricsFetcher
+
+        fetcher = YFinanceHistoricalMetricsFetcher()
+        price_metrics = fetcher.get_price_based_metrics(symbol, period=period)
+
+        if price_metrics is None or price_metrics.empty:
+            return jsonify({'error': f'No price data available for {symbol}'}), 404
+
+        # Convert to JSON format
+        data = []
+        for date, row in price_metrics.iterrows():
+            record = {
+                'date': date.isoformat(),
+                'open': row.get('Open'),
+                'high': row.get('High'),
+                'low': row.get('Low'),
+                'close': row.get('Close'),
+                'volume': row.get('Volume'),
+                'market_cap': row.get('market_cap'),
+                'dividend_yield': row.get('dividend_yield', 0)
+            }
+            # Remove None/NaN values
+            record = {k: v for k, v in record.items() if pd.notna(v) and v is not None}
+            data.append(record)
+
+        return jsonify({
+            'symbol': symbol,
+            'period': period,
+            'source': 'yfinance_direct',
+            'records_count': len(data),
+            'date_range': {
+                'start': price_metrics.index[0].isoformat(),
+                'end': price_metrics.index[-1].isoformat()
+            },
+            'data': data
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metrics/comparison')
 def get_metrics_comparison():
@@ -809,9 +811,6 @@ def admin_download():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to start download: {str(e)}'})
 
-def get_db_cursor():
-    conn = get_db_connection()
-    return conn.cursor(cursor_factory=RealDictCursor)
-
 if __name__ == '__main__':
+    conn = get_db_connection()
     app.run(host='0.0.0.0', port=5000, debug=True)
