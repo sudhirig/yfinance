@@ -341,9 +341,9 @@ def get_stock_financials(symbol):
             cursor.execute("""
                 SELECT b.period_ending, b.period_type, b.total_assets, b.current_assets,
                        b.total_liabilities, b.current_liabilities, b.stockholders_equity,
-                       b.total_debt, b.cash_and_equivalents, b.accounts_receivable,
-                       b.inventory, b.property_plant_equipment, b.accounts_payable,
-                       b.long_term_debt, b.retained_earnings
+                       b.total_debt, b.cash_and_cash_equivalents, b.accounts_receivable,
+                       b.inventory, b.net_ppe, b.accounts_payable,
+                       b.total_debt, b.retained_earnings
                 FROM balance_sheets b
                 JOIN companies c ON c.id = b.company_id
                 WHERE c.symbol = %s
@@ -360,8 +360,8 @@ def get_stock_financials(symbol):
             cursor.execute("""
                 SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow,
                        cf.investing_cash_flow, cf.financing_cash_flow, cf.free_cash_flow,
-                       cf.capital_expenditures, cf.dividends_paid, cf.net_change_in_cash,
-                       cf.depreciation_amortization, cf.change_in_working_capital
+                       cf.capital_expenditure, cf.cash_dividends_paid, cf.changes_in_cash,
+                       cf.depreciation_and_amortization, cf.change_in_working_capital
                 FROM cash_flow_statements cf
                 JOIN companies c ON c.id = cf.company_id
                 WHERE c.symbol = %s
@@ -401,10 +401,10 @@ def get_stock_financials(symbol):
                 'current_liabilities': float(row[5]) if row[5] else None,
                 'stockholders_equity': float(row[6]) if row[6] else None,
                 'total_debt': float(row[7]) if row[7] else None,
-                'cash_and_equivalents': float(row[8]) if row[8] else None,
+                'cash_and_cash_equivalents': float(row[8]) if row[8] else None,
                 'accounts_receivable': float(row[9]) if row[9] else None,
                 'inventory': float(row[10]) if row[10] else None,
-                'property_plant_equipment': float(row[11]) if row[11] else None,
+                'net_ppe': float(row[11]) if row[11] else None,
                 'accounts_payable': float(row[12]) if row[12] else None,
                 'long_term_debt': float(row[13]) if row[13] else None,
                 'retained_earnings': float(row[14]) if row[14] else None
@@ -416,10 +416,10 @@ def get_stock_financials(symbol):
                 'investing_cash_flow': float(row[3]) if row[3] else None,
                 'financing_cash_flow': float(row[4]) if row[4] else None,
                 'free_cash_flow': float(row[5]) if row[5] else None,
-                'capital_expenditures': float(row[6]) if row[6] else None,
-                'dividends_paid': float(row[7]) if row[7] else None,
-                'net_change_in_cash': float(row[8]) if row[8] else None,
-                'depreciation_amortization': float(row[9]) if row[9] else None,
+                'capital_expenditure': float(row[6]) if row[6] else None,
+                'cash_dividends_paid': float(row[7]) if row[7] else None,
+                'changes_in_cash': float(row[8]) if row[8] else None,
+                'depreciation_and_amortization': float(row[9]) if row[9] else None,
                 'change_in_working_capital': float(row[10]) if row[10] else None
             } for row in cashflow_data]
         })
