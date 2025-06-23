@@ -318,18 +318,22 @@ def get_stock_financials(symbol):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get income statements with error handling
-        cursor.execute("""
-            SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
-                   i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share,
-                   i.research_development, i.selling_general_admin, i.interest_expense,
-                   i.income_before_tax, i.income_tax_expense, i.other_income_expense
-            FROM income_statements i
-            JOIN companies c ON c.id = i.company_id
-            WHERE c.symbol = %s AND (i.period_type = 'annual' OR i.period_type IS NULL)
-            ORDER BY i.period_ending DESC
-            LIMIT 5
-        """, (symbol,))
+        # Get income statements with better error handling
+        try:
+            cursor.execute("""
+                SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
+                       i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share,
+                       i.research_development, i.selling_general_admin, i.interest_expense,
+                       i.income_before_tax, i.income_tax_expense, i.other_income_expense
+                FROM income_statements i
+                JOIN companies c ON c.id = i.company_id
+                WHERE c.symbol = %s
+                ORDER BY i.period_ending DESC
+                LIMIT 5
+            """, (symbol,))
+        except Exception as e:
+            print(f"Income statement query error for {symbol}: {e}")
+            cursor.execute("SELECT 1 WHERE FALSE")  # Empty result
         income_data = cursor.fetchall()
         
         # Get balance sheets with error handling
@@ -342,7 +346,7 @@ def get_stock_financials(symbol):
                        b.long_term_debt, b.retained_earnings
                 FROM balance_sheets b
                 JOIN companies c ON c.id = b.company_id
-                WHERE c.symbol = %s AND (b.period_type = 'annual' OR b.period_type IS NULL)
+                WHERE c.symbol = %s
                 ORDER BY b.period_ending DESC
                 LIMIT 5
             """, (symbol,))
@@ -360,7 +364,7 @@ def get_stock_financials(symbol):
                        cf.depreciation_amortization, cf.change_in_working_capital
                 FROM cash_flow_statements cf
                 JOIN companies c ON c.id = cf.company_id
-                WHERE c.symbol = %s AND (cf.period_type = 'annual' OR cf.period_type IS NULL)
+                WHERE c.symbol = %s
                 ORDER BY cf.period_ending DESC
                 LIMIT 5
             """, (symbol,))
@@ -430,22 +434,26 @@ def get_stock_ratios(symbol):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT 
-                i.period_ending,
-                CASE WHEN i.total_revenue > 0 THEN i.net_income::float / i.total_revenue * 100 ELSE NULL END as profit_margin,
-                CASE WHEN b.total_assets > 0 THEN i.net_income::float / b.total_assets * 100 ELSE NULL END as roa,
-                CASE WHEN b.stockholders_equity > 0 THEN i.net_income::float / b.stockholders_equity * 100 ELSE NULL END as roe,
-                CASE WHEN b.current_liabilities > 0 THEN b.current_assets::float / b.current_liabilities ELSE NULL END as current_ratio,
-                CASE WHEN b.stockholders_equity > 0 THEN b.total_debt::float / b.stockholders_equity ELSE NULL END as debt_to_equity,
-                CASE WHEN i.total_revenue > 0 THEN i.operating_income::float / i.total_revenue * 100 ELSE NULL END as operating_margin
-            FROM income_statements i
-            JOIN balance_sheets b ON i.company_id = b.company_id AND i.period_ending = b.period_ending
-            JOIN companies c ON c.id = i.company_id
-            WHERE c.symbol = %s AND i.period_type = 'annual'
-            ORDER BY i.period_ending DESC
-            LIMIT 5
-        """, (symbol,))
+        try:
+            cursor.execute("""
+                SELECT 
+                    i.period_ending,
+                    CASE WHEN i.total_revenue > 0 THEN i.net_income::float / i.total_revenue * 100 ELSE NULL END as profit_margin,
+                    CASE WHEN b.total_assets > 0 THEN i.net_income::float / b.total_assets * 100 ELSE NULL END as roa,
+                    CASE WHEN b.stockholders_equity > 0 THEN i.net_income::float / b.stockholders_equity * 100 ELSE NULL END as roe,
+                    CASE WHEN b.current_liabilities > 0 THEN b.current_assets::float / b.current_liabilities ELSE NULL END as current_ratio,
+                    CASE WHEN b.stockholders_equity > 0 THEN b.total_debt::float / b.stockholders_equity ELSE NULL END as debt_to_equity,
+                    CASE WHEN i.total_revenue > 0 THEN i.operating_income::float / i.total_revenue * 100 ELSE NULL END as operating_margin
+                FROM income_statements i
+                JOIN balance_sheets b ON i.company_id = b.company_id AND i.period_ending = b.period_ending
+                JOIN companies c ON c.id = i.company_id
+                WHERE c.symbol = %s
+                ORDER BY i.period_ending DESC
+                LIMIT 5
+            """, (symbol,))
+        except Exception as e:
+            print(f"Ratios query error for {symbol}: {e}")
+            cursor.execute("SELECT NULL, NULL, NULL, NULL, NULL, NULL, NULL WHERE FALSE")  # Empty result
         
         ratios = cursor.fetchall()
         conn.close()
