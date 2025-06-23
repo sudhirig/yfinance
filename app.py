@@ -318,64 +318,76 @@ def get_stock_financials(symbol):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get income statements
+        # Get company ID first
+        cursor.execute("SELECT id FROM companies WHERE symbol = %s", (symbol,))
+        company_result = cursor.fetchone()
+        if not company_result:
+            conn.close()
+            return jsonify({'error': 'Company not found'}), 404
+        
+        company_id = company_result[0]
+        
+        # Get income statements - safer column selection
         cursor.execute("""
-            SELECT * FROM income_statements i
-            JOIN companies c ON c.id = i.company_id
-            WHERE c.symbol = %s AND i.period_type = 'annual'
+            SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
+                   i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share
+            FROM income_statements i
+            WHERE i.company_id = %s AND i.period_type = 'annual'
             ORDER BY i.period_ending DESC
             LIMIT 5
-        """, (symbol,))
+        """, (company_id,))
         income_data = cursor.fetchall()
         
-        # Get balance sheets
+        # Get balance sheets - safer column selection
         cursor.execute("""
-            SELECT * FROM balance_sheets b
-            JOIN companies c ON c.id = b.company_id
-            WHERE c.symbol = %s AND b.period_type = 'annual'
+            SELECT b.period_ending, b.period_type, b.total_assets, b.current_assets,
+                   b.total_liabilities, b.current_liabilities, b.stockholders_equity, b.total_debt
+            FROM balance_sheets b
+            WHERE b.company_id = %s AND b.period_type = 'annual'
             ORDER BY b.period_ending DESC
             LIMIT 5
-        """, (symbol,))
+        """, (company_id,))
         balance_data = cursor.fetchall()
         
-        # Get cash flow statements
+        # Get cash flow statements - safer column selection
         cursor.execute("""
-            SELECT * FROM cash_flow_statements cf
-            JOIN companies c ON c.id = cf.company_id
-            WHERE c.symbol = %s AND cf.period_type = 'annual'
+            SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow, cf.investing_cash_flow,
+                   cf.financing_cash_flow, cf.free_cash_flow, cf.capital_expenditures
+            FROM cash_flow_statements cf
+            WHERE cf.company_id = %s AND cf.period_type = 'annual'
             ORDER BY cf.period_ending DESC
             LIMIT 5
-        """, (symbol,))
+        """, (company_id,))
         cashflow_data = cursor.fetchall()
         
         conn.close()
         
         return jsonify({
             'income': [{
-                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
-                'total_revenue': row[5],
-                'cost_of_revenue': row[6],
-                'gross_profit': row[7],
-                'operating_income': row[8],
-                'net_income': row[9],
-                'earnings_per_share': row[10]
+                'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'total_revenue': float(row[2]) if row[2] else None,
+                'cost_of_revenue': float(row[3]) if row[3] else None,
+                'gross_profit': float(row[4]) if row[4] else None,
+                'operating_income': float(row[5]) if row[5] else None,
+                'net_income': float(row[6]) if row[6] else None,
+                'earnings_per_share': float(row[7]) if row[7] else None
             } for row in income_data],
             'balance': [{
-                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
-                'total_assets': row[5],
-                'current_assets': row[6],
-                'total_liabilities': row[7],
-                'current_liabilities': row[8],
-                'stockholders_equity': row[9],
-                'total_debt': row[10]
+                'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'total_assets': float(row[2]) if row[2] else None,
+                'current_assets': float(row[3]) if row[3] else None,
+                'total_liabilities': float(row[4]) if row[4] else None,
+                'current_liabilities': float(row[5]) if row[5] else None,
+                'stockholders_equity': float(row[6]) if row[6] else None,
+                'total_debt': float(row[7]) if row[7] else None
             } for row in balance_data],
             'cashflow': [{
-                'period_ending': row[3].strftime('%Y-%m-%d') if row[3] else None,
-                'operating_cash_flow': row[5],
-                'investing_cash_flow': row[6],
-                'financing_cash_flow': row[7],
-                'free_cash_flow': row[8],
-                'capital_expenditures': row[9]
+                'period_ending': row[0].strftime('%Y-%m-%d') if row[0] else None,
+                'operating_cash_flow': float(row[2]) if row[2] else None,
+                'investing_cash_flow': float(row[3]) if row[3] else None,
+                'financing_cash_flow': float(row[4]) if row[4] else None,
+                'free_cash_flow': float(row[5]) if row[5] else None,
+                'capital_expenditures': float(row[6]) if row[6] else None
             } for row in cashflow_data]
         })
         
