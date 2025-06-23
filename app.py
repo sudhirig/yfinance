@@ -318,7 +318,7 @@ def get_stock_financials(symbol):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get income statements with proper column mapping
+        # Get income statements with error handling
         cursor.execute("""
             SELECT i.period_ending, i.period_type, i.total_revenue, i.cost_of_revenue, 
                    i.gross_profit, i.operating_income, i.net_income, i.earnings_per_share,
@@ -326,40 +326,48 @@ def get_stock_financials(symbol):
                    i.income_before_tax, i.income_tax_expense, i.other_income_expense
             FROM income_statements i
             JOIN companies c ON c.id = i.company_id
-            WHERE c.symbol = %s AND i.period_type = 'annual'
+            WHERE c.symbol = %s AND (i.period_type = 'annual' OR i.period_type IS NULL)
             ORDER BY i.period_ending DESC
             LIMIT 5
         """, (symbol,))
         income_data = cursor.fetchall()
         
-        # Get balance sheets with proper column mapping
-        cursor.execute("""
-            SELECT b.period_ending, b.period_type, b.total_assets, b.current_assets,
-                   b.total_liabilities, b.current_liabilities, b.stockholders_equity,
-                   b.total_debt, b.cash_and_equivalents, b.accounts_receivable,
-                   b.inventory, b.property_plant_equipment, b.accounts_payable,
-                   b.long_term_debt, b.retained_earnings
-            FROM balance_sheets b
-            JOIN companies c ON c.id = b.company_id
-            WHERE c.symbol = %s AND b.period_type = 'annual'
-            ORDER BY b.period_ending DESC
-            LIMIT 5
-        """, (symbol,))
-        balance_data = cursor.fetchall()
+        # Get balance sheets with error handling
+        try:
+            cursor.execute("""
+                SELECT b.period_ending, b.period_type, b.total_assets, b.current_assets,
+                       b.total_liabilities, b.current_liabilities, b.stockholders_equity,
+                       b.total_debt, b.cash_and_equivalents, b.accounts_receivable,
+                       b.inventory, b.property_plant_equipment, b.accounts_payable,
+                       b.long_term_debt, b.retained_earnings
+                FROM balance_sheets b
+                JOIN companies c ON c.id = b.company_id
+                WHERE c.symbol = %s AND (b.period_type = 'annual' OR b.period_type IS NULL)
+                ORDER BY b.period_ending DESC
+                LIMIT 5
+            """, (symbol,))
+            balance_data = cursor.fetchall()
+        except Exception as e:
+            balance_data = []
+            print(f"Balance sheet query error for {symbol}: {e}")
         
-        # Get cash flow statements with proper column mapping
-        cursor.execute("""
-            SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow,
-                   cf.investing_cash_flow, cf.financing_cash_flow, cf.free_cash_flow,
-                   cf.capital_expenditures, cf.dividends_paid, cf.net_change_in_cash,
-                   cf.depreciation_amortization, cf.change_in_working_capital
-            FROM cash_flow_statements cf
-            JOIN companies c ON c.id = cf.company_id
-            WHERE c.symbol = %s AND cf.period_type = 'annual'
-            ORDER BY cf.period_ending DESC
-            LIMIT 5
-        """, (symbol,))
-        cashflow_data = cursor.fetchall()
+        # Get cash flow statements with error handling
+        try:
+            cursor.execute("""
+                SELECT cf.period_ending, cf.period_type, cf.operating_cash_flow,
+                       cf.investing_cash_flow, cf.financing_cash_flow, cf.free_cash_flow,
+                       cf.capital_expenditures, cf.dividends_paid, cf.net_change_in_cash,
+                       cf.depreciation_amortization, cf.change_in_working_capital
+                FROM cash_flow_statements cf
+                JOIN companies c ON c.id = cf.company_id
+                WHERE c.symbol = %s AND (cf.period_type = 'annual' OR cf.period_type IS NULL)
+                ORDER BY cf.period_ending DESC
+                LIMIT 5
+            """, (symbol,))
+            cashflow_data = cursor.fetchall()
+        except Exception as e:
+            cashflow_data = []
+            print(f"Cash flow query error for {symbol}: {e}")
         
         conn.close()
         
