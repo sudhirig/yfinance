@@ -1,0 +1,44 @@
+
+# Windsurf IDE Rules for YFinance Financial Data Application
+
+## Project Overview
+This is a Python-based financial data analysis application that:
+- Downloads NSE (National Stock Exchange) stock data using yfinance
+- Stores data in PostgreSQL database
+- Provides Flask web interface for data visualization
+- Includes comprehensive financial metrics and analysis tools
+
+## Development Setup
+1. Install Python dependencies: `pip install -r requirements.txt`
+2. Setup PostgreSQL database (see database_setup_instructions.md)
+3. Run initial data download: Use "Setup Database" workflow
+4. Start the web application: Use "Start YFinance App" workflow
+
+## Key Components
+- `app.py`: Main Flask web application
+- `main_data_loader.py`: Core data loading and database management
+- `yfinance_nse_downloader.py`: NSE stock data downloader
+- `financial_dashboard.py`: Analysis and visualization tools
+- `database_config.py`: Database connection configuration
+
+## Database Schema
+- Uses PostgreSQL with comprehensive financial data schema
+- Includes company overview, price data, financial statements
+- Historical metrics and analysis tables
+
+## API Endpoints
+- `/`: Main dashboard
+- `/api/stocks`: Stock data API
+- Various analysis endpoints in the Flask app
+
+## Important Notes
+- Requires PostgreSQL database connection
+- Uses yfinance library for Yahoo Finance data
+- Designed for NSE (Indian stock market) data analysis
+- Includes rate limiting and caching for API calls
+
+## Workflows Available
+- Setup Database: Initialize and populate database
+- Download All NSE Stocks: Complete data download
+- Download Missing Companies Only: Incremental updates
+- Start YFinance App: Launch web interface

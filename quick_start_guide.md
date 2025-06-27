@@ -1,3 +1,36 @@
+# Quick Start Guide
+
+This guide will help you get started with the YFinance Financial Data Analysis Platform in Windsurf IDE.
+
+## For Windsurf IDE Users
+
+### 1. Open Project
+- Launch Windsurf IDE
+- Open this project folder
+- Wait for project indexing to complete
+
+### 2. Setup Environment
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure Database
+- Ensure PostgreSQL is running
+- Update `database_config.py` with your database credentials
+
+### 4. Use Built-in Workflows
+Windsurf provides pre-configured workflows:
+1. **Setup Database**: Initializes database and downloads NSE data
+2. **Start YFinance App**: Launches the web interface
+3. **Download All NSE Stocks**: Complete market data download
+
+### 5. Access Application
+- Run "Start YFinance App" workflow
+- Open `http://localhost:5000` in your browser
+
+## Traditional Setup
+
+If not using Windsurf IDE:
 
 # NSE Stock Data Download - Quick Start Guide
 

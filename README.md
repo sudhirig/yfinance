@@ -1,111 +1,275 @@
+
 <img src="./doc/yfinance-gh-logo-dark.webp#gh-dark-mode-only" height="100">
 <img src="./doc/yfinance-gh-logo-light.webp#gh-light-mode-only" height="100">
 
-# Download market data from Yahoo! Finance's API
+# YFinance Financial Data Analysis Platform
 
-<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/badge/python-2.7,%203.6+-blue.svg?style=flat" alt="Python version"></a>
+<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/badge/python-3.8+-blue.svg?style=flat" alt="Python version"></a>
 <a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/v/yfinance.svg?maxAge=60%" alt="PyPi version"></a>
-<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/status/yfinance.svg?maxAge=60" alt="PyPi status"></a>
-<a target="new" href="https://pypi.python.org/pypi/yfinance"><img border=0 src="https://img.shields.io/pypi/dm/yfinance.svg?maxAge=2592000&label=installs&color=%2327B1FF" alt="PyPi downloads"></a>
 <a target="new" href="https://github.com/ranaroussi/yfinance"><img border=0 src="https://img.shields.io/github/stars/ranaroussi/yfinance.svg?style=social&label=Star&maxAge=60" alt="Star this repo"></a>
-<a target="new" href="https://x.com/intent/follow?screen_name=aroussi"><img border=0 src="https://img.shields.io/twitter/follow/aroussi.svg?style=social&label=Follow&maxAge=60" alt="Follow me on twitter"></a>
 
-
-
-**yfinance** offers a Pythonic way to fetch financial & market data from [Yahoo!Ⓡ finance](https://finance.yahoo.com).
+**A comprehensive financial data analysis platform** built on top of yfinance, specifically designed for Indian stock markets (NSE/BSE) with PostgreSQL database integration and web-based visualization.
 
 ---
 
-> [!IMPORTANT]  
-> **Yahoo!, Y!Finance, and Yahoo! finance are registered trademarks of Yahoo, Inc.**
->
-> yfinance is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's an open-source tool that uses Yahoo's publicly available APIs, and is intended for research and educational purposes.
-> 
-> **You should refer to Yahoo!'s terms of use** ([here](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm), [here](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html), and [here](https://policies.yahoo.com/us/en/yahoo/terms/index.htm)) **for details on your rights to use the actual data downloaded.
->
-> Remember - the Yahoo! finance API is intended for personal use only.**
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- PostgreSQL database
+- Internet connection for data downloads
+
+### Setup in Windsurf IDE
+
+1. **Clone and Open**: Open this project in Windsurf IDE
+2. **Install Dependencies**: 
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Database Setup**: Follow the [Database Setup Guide](database_setup_instructions.md)
+4. **Initialize Data**: Run the "Setup Database" workflow
+5. **Launch Application**: Use the "Start YFinance App" workflow
+
+### Available Workflows
+
+| Workflow | Purpose | Commands |
+|----------|---------|----------|
+| **Setup Database** | Initialize database and download initial NSE data | `python main_data_loader.py --download-nse` |
+| **Download All NSE Stocks** | Complete NSE universe download | `python yfinance_nse_downloader.py` |
+| **Download Missing Companies** | Incremental updates for missing data | `python check_missing_companies.py` + data loader |
+| **Start YFinance App** | Launch Flask web interface | `python app.py` |
 
 ---
 
-> [!TIP]
-> THE NEW DOCUMENTATION WEBSITE IS NOW LIVE! 🤘
-> 
-> Visit [**ranaroussi.github.io/yfinance**](https://ranaroussi.github.io/yfinance)
+## 🏗️ Architecture
+
+### Core Components
+
+- **Flask Web Application** (`app.py`): Main dashboard and API endpoints
+- **Data Management**: Automated downloaders and database loaders
+- **PostgreSQL Database**: Structured financial data storage
+- **Analysis Tools**: Comprehensive financial metrics and reporting
+
+### Database Schema
+
+```sql
+-- Key Tables
+- company_overview: Company metadata and basic information
+- latest_price_data: Current and historical price data
+- annual_financials: Income statements, balance sheets, cash flows
+- historical_metrics: Calculated financial ratios and metrics
+- market_data: Trading volumes, market cap, etc.
+```
+
+### API Endpoints
+
+- `GET /`: Main dashboard interface
+- `GET /api/stocks`: Stock listing and search
+- `GET /api/company/{symbol}`: Detailed company information
+- `GET /api/metrics/{symbol}`: Financial metrics and ratios
 
 ---
 
-## Main components
+## 📊 Features
 
-- `Ticker`: single ticker data
-- `Tickers`: multiple tickers' data
-- `download`: download market data for multiple tickers
-- `Market`: get information about a market
-- `WebSocket` and `AsyncWebSocket`: live streaming data
+### Data Coverage
+- **NSE (National Stock Exchange)**: Complete universe coverage
+- **BSE (Bombay Stock Exchange)**: Major listings
+- **Real-time Data**: Live price feeds and market data
+- **Historical Data**: Up to 20+ years of historical information
+
+### Financial Metrics
+- Fundamental ratios (P/E, P/B, ROE, ROA, etc.)
+- Technical indicators
+- Growth metrics and trends
+- Comparative analysis tools
+
+### Visualization
+- Interactive charts and graphs
+- Portfolio tracking capabilities
+- Market screening and filtering
+- Custom dashboard creation
 
 ---
 
-## Example: Fetching Indian Stock Data (NSE & BSE)
+## 🛠️ Development
 
-yfinance supports fetching data for Indian stocks listed on NSE and BSE:
+### Project Structure
+
+```
+├── app.py                          # Main Flask application
+├── main_data_loader.py             # Core data loading system
+├── yfinance_nse_downloader.py      # NSE data downloader
+├── financial_dashboard.py          # Analysis and visualization
+├── database_config.py              # Database configuration
+├── yfinance/                       # Core yfinance library
+├── doc/                           # Documentation
+└── tests/                         # Test suite
+```
+
+### Key Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `data_completeness_checker.py` | Validate data integrity |
+| `historical_metrics_calculator.py` | Calculate financial ratios |
+| `query_builder.py` | Interactive database queries |
+| `financial_dashboard.py` | Generate analysis reports |
+
+### Database Management
+
+```bash
+# Check data status
+python data_completeness_checker.py
+
+# Export database
+python export_database.py
+
+# Import database backup
+python import_database.py
+```
+
+---
+
+## 📚 Documentation
+
+- [Database Setup Instructions](database_setup_instructions.md)
+- [Quick Start Guide](quick_start_guide.md)
+- [API Documentation](example_queries.sql)
+- [Development Guide](CONTRIBUTING.md)
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+Create a `.env` file for database configuration:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=yfinance_db
+DB_USER=your_username
+DB_PASSWORD=your_password
+```
+
+### Windsurf IDE Setup
+This project is optimized for Windsurf IDE with:
+- Pre-configured workflows for common tasks
+- Integrated database management
+- Built-in debugging and testing tools
+- Auto-completion for financial data APIs
+
+---
+
+## 📈 Example Usage
+
+### Fetch NSE Stock Data
 
 ```python
 import yfinance as yf
 
 # NSE Example: Reliance Industries
 nse_ticker = yf.Ticker("RELIANCE.NS")
-nse_data = nse_ticker.history(period="1mo")
-print("NSE - Reliance Industries (RELIANCE.NS) last 1 month:")
+nse_data = nse_ticker.history(period="1y")
+print("NSE - Reliance Industries last 1 year:")
 print(nse_data)
 
-# BSE Example: Reliance Industries (BSE code: 500325)
+# BSE Example: Reliance Industries
 bse_ticker = yf.Ticker("500325.BO")
-bse_data = bse_ticker.history(period="1mo")
-print("BSE - Reliance Industries (500325.BO) last 1 month:")
+bse_data = bse_ticker.history(period="1y")
+print("BSE - Reliance Industries last 1 year:")
 print(bse_data)
 ```
 
-- For NSE, use the ticker symbol followed by `.NS` (e.g., `RELIANCE.NS`).
-- For BSE, use the numeric code followed by `.BO` (e.g., `500325.BO`).
+### Database Queries
 
-> Note: Data availability may vary and is subject to Yahoo Finance's data sources.
-- `Search`: quotes and news from search
-- `Sector` and `Industry`: sector and industry information
-- `EquityQuery` and `Screener`: build query to screen market
+```python
+from database_config import get_db_connection
 
-## Installation
+# Get top companies by market cap
+query = """
+SELECT symbol, long_name, sector, market_cap 
+FROM company_overview 
+WHERE market_cap IS NOT NULL 
+ORDER BY market_cap DESC 
+LIMIT 10;
+"""
 
-Install `yfinance` from PYPI using `pip`:
-
-``` {.sourceCode .bash}
-$ pip install yfinance
+with get_db_connection() as conn:
+    result = pd.read_sql(query, conn)
+    print(result)
 ```
 
-### [yfinance relies on the community to investigate bugs and contribute code. Here's how you can help.](CONTRIBUTING.md)
+---
+
+## 🚀 Deployment
+
+This application is configured for deployment on Replit with:
+- Gunicorn WSGI server for production
+- PostgreSQL database integration
+- Environment-based configuration
+- Automatic scaling capabilities
+
+```bash
+# Production deployment
+gunicorn --bind 0.0.0.0:5000 app:app
+```
 
 ---
 
-![Star History Chart](https://api.star-history.com/svg?repos=ranaroussi/yfinance)
+## 📋 Requirements
+
+### System Requirements
+- Python 3.8+
+- PostgreSQL 12+
+- 4GB+ RAM (for large datasets)
+- Stable internet connection
+
+### Python Dependencies
+All dependencies are listed in [requirements.txt](requirements.txt), including:
+- yfinance (latest)
+- pandas, numpy
+- Flask, psycopg2
+- matplotlib, seaborn
+- requests, beautifulsoup4
 
 ---
 
-### Legal Stuff
+## ⚖️ Legal Notice
 
-**yfinance** is distributed under the **Apache Software License**. See
-the [LICENSE.txt](./LICENSE.txt) file in the release for details.
-
-AGAIN - yfinance is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's
-an open-source tool that uses Yahoo's publicly available APIs, and is
-intended for research and educational purposes. You should refer to Yahoo!'s terms of use
-([here](https://policies.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.htm),
-[here](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html), and
-[here](https://policies.yahoo.com/us/en/yahoo/terms/index.htm)) for
-details on your rights to use the actual data downloaded.
+> [!IMPORTANT]  
+> **Yahoo!, Y!Finance, and Yahoo! finance are registered trademarks of Yahoo, Inc.**
+>
+> This application is **not** affiliated, endorsed, or vetted by Yahoo, Inc. It's an open-source tool that uses Yahoo's publicly available APIs, and is intended for research and educational purposes.
+> 
+> **You should refer to Yahoo!'s terms of use** for details on your rights to use the actual data downloaded.
+>
+> **The Yahoo! finance API is intended for personal use only.**
 
 ---
 
-### P.S.
+## 🤝 Contributing
 
-Please drop me a note with any feedback you have.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-**Ran Aroussi**
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `python -m unittest discover -s tests`
+5. Submit a pull request
 
+---
+
+## 📞 Support
+
+- **Documentation**: [Full Documentation](https://ranaroussi.github.io/yfinance)
+- **Issues**: [GitHub Issues](https://github.com/ranaroussi/yfinance/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ranaroussi/yfinance/discussions)
+
+---
+
+**Built with ❤️ for the financial analysis community**
+
+*This platform provides institutional-grade financial data analysis capabilities for individual investors, researchers, and developers.*
