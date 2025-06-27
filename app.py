@@ -811,6 +811,15 @@ def admin_download():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to start download: {str(e)}'})
 
+
+@app.route('/test_db_connection')
+def test_db_connection():
+    try:
+        conn = get_db_connection()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Database connection successful'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 500
+
 if __name__ == '__main__':
-    conn = get_db_connection()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5050, debug=True)
