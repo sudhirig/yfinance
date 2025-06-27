@@ -5,12 +5,21 @@ from typing import Dict
 def get_database_config() -> Dict[str, str]:
     """
     Get database configuration from environment variables
+    Configure your database by setting these environment variables:
+    - PGHOST: Database host (default: localhost)
+    - PGDATABASE: Database name (default: yfinance_db)
+    - PGUSER: Database username (default: postgres)
+    - PGPASSWORD: Database password (required)
+    - PGPORT: Database port (default: 5432)
+    
+    For production, use Replit's PostgreSQL service which auto-configures these.
+    For local development, set these in your .env file or Replit Secrets.
     """
     return {
-        'host': os.getenv('PGHOST', '0.0.0.0'),
+        'host': os.getenv('PGHOST', 'localhost'),
         'database': os.getenv('PGDATABASE', 'yfinance_db'),
         'user': os.getenv('PGUSER', 'postgres'),
-        'password': os.getenv('PGPASSWORD', ''),
+        'password': os.getenv('PGPASSWORD', 'your_password_here'),
         'port': int(os.getenv('PGPORT', 5432))
     }
 
